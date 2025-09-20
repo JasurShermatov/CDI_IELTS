@@ -1,99 +1,130 @@
 # apps/profiles/serializers.py
-from __future__ import annotations
-
-from decimal import Decimal
-from typing import Any, Dict
-
 from rest_framework import serializers
-
 from apps.users.models import User
-from .models import StudentProfile, TeacherProfile, StudentApprovalLog, StudentTopUpLog
+from .models import StudentProfile, TeacherProfile, StudentTopUpLog, StudentApprovalLog
 
 
-# -------- Common read --------
-class StudentProfileReadSerializer(serializers.ModelSerializer):
+# ---- Common minimal user serializer ----
+class UserBriefSerializer(serializers.ModelSerializer):
     class Meta:
-        model = StudentProfile
-        fields = ("id", "balance", "is_approved", "type", "created_at", "updated_at")
+        model = User
+        fields = [
+            "id",
+            "fullname",
+            "telegram_username",
+            "phone_number",
+            "role",
+            "last_activity",
+        ]
         read_only_fields = fields
 
 
-class TeacherProfileReadSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TeacherProfile
-        fields = ("id", "created_at", "updated_at")
-        read_only_fields = fields
-
-
-# -------- Me --------
-class ProfileMeSerializer(serializers.Serializer):
-    user = serializers.SerializerMethodField()
-    student_profile = StudentProfileReadSerializer(read_only=True)
-    teacher_profile = TeacherProfileReadSerializer(read_only=True)
-
-    def get_user(self, obj: User):
-        return {
-            "id": str(obj.id),
-            "fullname": obj.fullname,
-            "phone_number": obj.phone_number,
-            "role": obj.role,
-            "telegram_id": obj.telegram_id,
-            "telegram_username": obj.telegram_username,
-        }
-
-
-# -------- Admin: Student actions --------
-class StudentApproveSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = StudentProfile
-        fields = ("is_approved",)
-
-    def update(
-        self, instance: StudentProfile, validated_data: Dict[str, Any]
-    ) -> StudentProfile:
-        instance.is_approved = validated_data["is_approved"]
-        instance.save(update_fields=["is_approved", "type", "updated_at"])
-        return instance
-
-
-class StudentTopUpSerializer(serializers.Serializer):
-    amount = serializers.DecimalField(
-        max_digits=12, decimal_places=2, min_value=Decimal("0.01")
-    )
-
-    def save(self, **kwargs) -> StudentProfile:
-        instance: StudentProfile = self.context["instance"]
-        amount = self.validated_data["amount"]
-        instance.balance += amount
-        instance.save(update_fields=["balance", "updated_at"])
-        return instance
-
-
-class StudentApprovalLogSerializer(serializers.ModelSerializer):
-    actor_name = serializers.SerializerMethodField()
-
-    class Meta:
-        model = StudentApprovalLog
-        fields = ["id", "approved", "note", "actor", "actor_name", "created_at"]
-
-    def get_actor_name(self, obj):
-        return getattr(obj.actor, "fullname", None)
-
-
+# ---- Logs (mavjud) ----
 class StudentTopUpLogSerializer(serializers.ModelSerializer):
-    actor_name = serializers.SerializerMethodField()
+    actor = UserBriefSerializer(read_only=True)
 
     class Meta:
         model = StudentTopUpLog
+        fields = ["id", "amount", "new_balance", "actor", "note", "created_at"]
+        read_only_fields = fields
+
+
+class StudentApprovalLogSerializer(serializers.ModelSerializer):
+    actor = UserBriefSerializer(read_only=True)
+
+    class Meta:
+        model = StudentApprovalLog
+        fields = ["id", "approved", "actor", "note", "created_at"]
+        read_only_fields = fields
+
+
+# ---- Profiles (mavjud) ----
+class StudentProfileSerializer(serializers.ModelSerializer):
+    user = UserBriefSerializer(read_only=True)
+    is_offline = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StudentProfile
         fields = [
             "id",
-            "amount",
-            "new_balance",
-            "note",
-            "actor",
-            "actor_name",
+            "user",
+            "balance",
+            "type",
+            "is_approved",
+            "is_offline",
             "created_at",
+            "updated_at",
         ]
+        read_only_fields = fields
 
-    def get_actor_name(self, obj):
-        return getattr(obj.actor, "fullname", None)
+    def get_is_offline(self, obj: StudentProfile) -> bool:
+        return obj.type == StudentProfile.TYPE_OFFLINE
+
+
+class TeacherProfileSerializer(serializers.ModelSerializer):
+    user = UserBriefSerializer(read_only=True)
+
+    class Meta:
+        model = TeacherProfile
+        fields = ["id", "user", "created_at", "updated_at"]
+        read_only_fields = fields
+
+
+# =========================
+# Dashboard serializers
+# =========================
+
+
+# --- STUDENT ---
+class AllTestItemSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    title = serializers.CharField()
+    price = serializers.DecimalField(max_digits=12, decimal_places=2)
+    purchased = serializers.BooleanField()
+
+
+class MyTestItemSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    status = serializers.CharField()
+    started_at = serializers.DateTimeField(allow_null=True)
+    completed_at = serializers.DateTimeField(allow_null=True)
+    price_paid = serializers.DecimalField(max_digits=12, decimal_places=2)
+    test = AllTestItemSerializer()  # nested min info
+
+
+class ResultItemSerializer(serializers.Serializer):
+    user_test_id = serializers.UUIDField()
+    test_id = serializers.UUIDField()
+    test_title = serializers.CharField()
+    listening_score = serializers.FloatField(allow_null=True)
+    reading_score = serializers.FloatField(allow_null=True)
+    writing_score = serializers.FloatField(allow_null=True)
+    overall_score = serializers.FloatField(allow_null=True)
+    created_at = serializers.DateTimeField()
+
+
+class StudentDashboardResponseSerializer(serializers.Serializer):
+    profile = StudentProfileSerializer()
+    sections = serializers.DictField(
+        child=serializers.JSONField()
+    )  # all_tests/my_tests/results
+
+
+# --- TEACHER ---
+class SubmissionItemSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    user_test_id = serializers.UUIDField()
+    student_fullname = serializers.CharField()
+    test_title = serializers.CharField()
+    task = serializers.CharField()
+    status = serializers.CharField()
+    score = serializers.FloatField(allow_null=True)
+    submitted_at = serializers.DateTimeField()
+    checked_at = serializers.DateTimeField(allow_null=True)
+
+
+class TeacherDashboardResponseSerializer(serializers.Serializer):
+    profile = TeacherProfileSerializer()
+    sections = serializers.DictField(
+        child=serializers.JSONField()
+    )  # all_writing/my_checking/my_checked

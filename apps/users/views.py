@@ -1,190 +1,113 @@
-#  apps/users/views.py
-from __future__ import annotations
-
-from datetime import datetime
-
 from django.db.models import Q
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
-from rest_framework import permissions, status, viewsets
+from django.shortcuts import get_object_or_404
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from .models import User
+from .permissions import IsSuperAdmin
 from .serializers import (
     UserReadSerializer,
-    UserUpdateMeSerializer,
-    AdminUserUpdateSerializer,
+    UserMeUpdateSerializer,
 )
 
 
-# ---------- Health ----------
 @extend_schema(
-    tags=["users"], responses={200: OpenApiResponse(description='{"status":"ok"}')}
+    tags=["Users"],
+    summary="Mening profilim (GET/PATCH)",
+    responses={200: UserReadSerializer},
 )
-@api_view(["GET"])
-@permission_classes([permissions.AllowAny])
-def ping(_request):
-    return Response({"status": "ok", "app": "users"}, status=status.HTTP_200_OK)
-
-
-# ---------- /users/me ----------
-class MeView(APIView):
+class MeView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserMeUpdateSerializer
 
-    @extend_schema(
-        tags=["users"], summary="Get current user", responses=UserReadSerializer
-    )
-    def get(self, request):
-        # eng tez: bevosita request.user dan serialize
-        serializer = UserReadSerializer(request.user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    def get_object(self):
+        return self.request.user
 
-    @extend_schema(
-        tags=["users"],
-        summary="Update current user (partial)",
-        request=UserUpdateMeSerializer,
-        responses={
-            200: UserReadSerializer,
-            400: OpenApiResponse(description="Validation error"),
-        },
-    )
-    def patch(self, request):
-        serializer = UserUpdateMeSerializer(
+    def get(self, request, *args, **kwargs):
+        return Response(UserReadSerializer(request.user).data)
+
+    def patch(self, request, *args, **kwargs):
+        ser = self.get_serializer(
             instance=request.user, data=request.data, partial=True
         )
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        return Response(UserReadSerializer(user).data, status=status.HTTP_200_OK)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(UserReadSerializer(request.user).data)
 
 
-# ---------- Admin: users CRUD (read/list + partial update) ----------
-class IsAdmin(permissions.IsAdminUser):
-    # future: superadmin-only bo‘lsa bu yerda toraytirish mumkin
-    pass
+@extend_schema(
+    tags=["Users"],
+    summary="Foydalanuvchilar ro‘yxati (faqat superadmin)",
+    parameters=[
+        OpenApiParameter(
+            name="q",
+            description="Qidirish (fullname/phone/telegram)",
+            required=False,
+            type=OpenApiTypes.STR,
+        ),
+        OpenApiParameter(
+            name="role",
+            description="Filter by role",
+            required=False,
+            type=OpenApiTypes.STR,
+            enum=["student", "teacher", "superadmin"],
+        ),
+        OpenApiParameter(
+            name="is_active",
+            description="1 yoki 0",
+            required=False,
+            type=OpenApiTypes.INT,
+        ),
+    ],
+    responses={200: UserReadSerializer(many=True)},
+)
+class UsersListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
+    serializer_class = UserReadSerializer
 
-
-@extend_schema(tags=["users"])
-class UserAdminViewSet(viewsets.ModelViewSet):
-    """
-    Admin-only ro'yxat, ko'rish, qisman yangilash.
-    Parol, permissions bilan ishlamaymiz (alohida admin panel uchun).
-    """
-
-    permission_classes = [IsAdmin]
-    http_method_names = ["get", "patch", "head", "options"]
-    queryset = (
-        User.objects.all()
-        .only(
-            "id",
-            "fullname",
-            "phone_number",
-            "role",
-            "telegram_id",
-            "telegram_username",
-            "is_active",
-            "is_staff",
-            "last_activity",
-            "created_at",
-            "updated_at",
-        )
-        .order_by("-created_at")
-    )
-
-    def get_serializer_class(self):
-        if self.action in {"list", "retrieve"}:
-            return UserReadSerializer
-        return AdminUserUpdateSerializer
-
-    # ---- Filtering (q, role, has_telegram, created_from, created_to) ----
-    @extend_schema(
-        parameters=[
-            OpenApiParameter(
-                name="q",
-                description="Search in fullname/phone/username",
-                required=False,
-                type=str,
-            ),
-            OpenApiParameter(
-                name="role",
-                description="student|teacher|superadmin",
-                required=False,
-                type=str,
-            ),
-            OpenApiParameter(
-                name="has_telegram", description="true|false", required=False, type=bool
-            ),
-            OpenApiParameter(
-                name="created_from",
-                description="ISO date, e.g. 2025-09-01",
-                required=False,
-                type=str,
-            ),
-            OpenApiParameter(
-                name="created_to",
-                description="ISO date, e.g. 2025-09-17",
-                required=False,
-                type=str,
-            ),
-        ]
-    )
-    def list(self, request, *args, **kwargs):
-        qs = self.filter_queryset(self.get_queryset())
-
-        q = request.query_params.get("q")
-        role = request.query_params.get("role")
-        has_telegram = request.query_params.get("has_telegram")
-        created_from = request.query_params.get("created_from")
-        created_to = request.query_params.get("created_to")
+    def get_queryset(self):
+        qs = User.objects.all().order_by("-created_at")
+        q = self.request.query_params.get("q")
+        role = self.request.query_params.get("role")
+        is_active = self.request.query_params.get("is_active")
 
         if q:
-            q_norm = q.strip().lower()
             qs = qs.filter(
-                Q(fullname__icontains=q_norm)
-                | Q(phone_number__icontains=q_norm)
-                | Q(telegram_username__icontains=q_norm)
+                Q(fullname__icontains=q)
+                | Q(phone_number__icontains=q)
+                | Q(telegram_username__icontains=q)
             )
-
-        if role in {User.Roles.STUDENT, User.Roles.TEACHER, User.Roles.SUPERADMIN}:
+        if role in {"student", "teacher", "superadmin"}:
             qs = qs.filter(role=role)
+        if is_active in {"0", "1"}:
+            qs = qs.filter(is_active=(is_active == "1"))
+        return qs
 
-        if has_telegram in {"true", "false"}:
-            if has_telegram == "true":
-                qs = qs.filter(
-                    Q(telegram_id__isnull=False) | Q(telegram_username__isnull=False)
-                )
-            else:
-                qs = qs.filter(
-                    Q(telegram_id__isnull=True) & Q(telegram_username__isnull=True)
-                )
 
-        # date filters (UTC, inclusive)
-        try:
-            if created_from:
-                dt_from = datetime.fromisoformat(created_from)
-                qs = qs.filter(created_at__gte=dt_from)
-            if created_to:
-                dt_to = datetime.fromisoformat(created_to)
-                qs = qs.filter(created_at__lte=dt_to)
-        except ValueError:
-            # noto‘g‘ri sana formatida bo‘lsa filtrni e’tiborsiz qoldiramiz
-            pass
+@extend_schema(
+    tags=["Users"],
+    summary="Foydalanuvchi ma’lumoti (faqat superadmin)",
+    responses={200: UserReadSerializer},
+)
+class UserDetailView(generics.RetrieveAPIView):
+    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
+    serializer_class = UserReadSerializer
+    queryset = User.objects.all()
 
-        page = self.paginate_queryset(qs)
-        if page is not None:
-            ser = UserReadSerializer(page, many=True)
-            return self.get_paginated_response(ser.data)
-        ser = UserReadSerializer(qs, many=True)
-        return Response(ser.data, status=status.HTTP_200_OK)
 
-    @extend_schema(
-        summary="Admin: partial update user",
-        request=AdminUserUpdateSerializer,
-        responses=UserReadSerializer,
-    )
-    def partial_update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        ser = AdminUserUpdateSerializer(instance, data=request.data, partial=True)
-        ser.is_valid(raise_exception=True)
-        user = ser.save()
-        return Response(UserReadSerializer(user).data, status=status.HTTP_200_OK)
+@extend_schema(
+    tags=["Users"],
+    summary="Statusni o‘zgartirish: activate/deactivate (faqat superadmin)",
+    request=None,
+    responses={200: UserReadSerializer},
+)
+@api_view(["POST"])
+@permission_classes([permissions.IsAuthenticated, IsSuperAdmin])
+def toggle_status(request, pk):
+    user = get_object_or_404(User, pk=pk)
+    user.is_active = not user.is_active
+    user.save(update_fields=["is_active", "updated_at"])
+    return Response(UserReadSerializer(user).data, status=status.HTTP_200_OK)

@@ -1,27 +1,24 @@
 # apps/profiles/urls.py
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import (
-    me,
-    StudentProfileAdminViewSet,
-    TeacherProfileAdminViewSet,
-    StudentApprovalLogViewSet,
-    StudentTopUpLogViewSet,
-)
+from django.urls import path
 
-router = DefaultRouter()
-router.register(
-    r"admin/students", StudentProfileAdminViewSet, basename="admin-students"
+from .views import (
+    StudentMeView,
+    TeacherMeView,
+    StudentTopUpLogListView,
+    StudentApprovalLogListView,
+    student_dashboard,
+    teacher_dashboard,
 )
-router.register(
-    r"admin/teachers", TeacherProfileAdminViewSet, basename="admin-teachers"
-)
-router.register(
-    r"admin/logs/approvals", StudentApprovalLogViewSet, basename="logs-approvals"
-)
-router.register(r"admin/logs/topups", StudentTopUpLogViewSet, basename="logs-topups")
 
 urlpatterns = [
-    path("me/", me, name="profiles-me"),
-    path("", include(router.urls)),
+    path("student/me/", StudentMeView.as_view(), name="student-me"),
+    path("teacher/me/", TeacherMeView.as_view(), name="teacher-me"),
+    path("student/topups/", StudentTopUpLogListView.as_view(), name="student-topups"),
+    path(
+        "student/approvals/",
+        StudentApprovalLogListView.as_view(),
+        name="student-approvals",
+    ),
+    path("student/dashboard/", student_dashboard, name="student-dashboard"),
+    path("teacher/dashboard/", teacher_dashboard, name="teacher-dashboard"),
 ]

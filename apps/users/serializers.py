@@ -1,99 +1,89 @@
-# apps/users/serializers.py
-from __future__ import annotations
+from typing import Optional
 
-import re
-from typing import Any, Dict, Optional
-
+from django.core.validators import RegexValidator
 from django.db.models.functions import Lower
 from rest_framework import serializers
 
 from .models import User
 
+_phone_validator = RegexValidator(
+    regex=r"^\+?[1-9]\d{7,14}$",
+    message="Phone must be in international format, e.g. +998901234567",
+)
 
-# --------- Common (read) ----------
+
 class UserReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        # parol / permission maydonlari chiqarilmaydi
-        fields = (
+        fields = [
             "id",
             "fullname",
-            "phone_number",
-            "role",
             "telegram_id",
             "telegram_username",
+            "phone_number",
+            "role",
             "is_active",
-            "is_staff",
             "last_activity",
             "created_at",
             "updated_at",
-        )
+        ]
         read_only_fields = fields
 
 
-# --------- Me (partial update) ----------
-class UserUpdateMeSerializer(serializers.ModelSerializer):
+class UserMeUpdateSerializer(serializers.ModelSerializer):
+    # Faqat o'z profilini yangilash uchun (fullname, telegram_username)
     telegram_username = serializers.CharField(
-        required=False, allow_blank=True, allow_null=True
+        allow_null=True, allow_blank=True, required=False, max_length=50
     )
 
     class Meta:
         model = User
-        fields = ("fullname", "telegram_username")
-        extra_kwargs = {
-            "fullname": {"required": False},
-        }
+        fields = ["fullname", "telegram_username"]
 
-    def validate_telegram_username(self, v: Optional[str]) -> Optional[str]:
-        if v in ("", None):
+    def validate_telegram_username(self, v: Optional[str]):
+        if not v:
             return None
         v = v.strip().lstrip("@").lower()
-        # Format tekshiruvi (manager bilan mos)
-        if not re.compile(r"^[A-Za-z0-9_]{5,32}$").match(v):
+        if not User.objects.tg_username_re.match(v):
             raise serializers.ValidationError(
                 "Invalid Telegram username (5-32 chars, letters/digits/_)."
             )
-        # Case-insensitive uniqueness (DB constraintdan oldin yumshoq xabar)
-        user_id = self.instance.id if self.instance else None
-        exists = (
-            User.objects.filter(telegram_username__isnull=False)
-            .annotate(_u=Lower("telegram_username"))
-            .filter(_u=v)
-            .exclude(id=user_id)
-            .exists()
-        )
-        if exists:
-            raise serializers.ValidationError(
-                "This Telegram username is already taken."
-            )
+        # case-insensitive unique when not null
+        qs = User.objects.all()
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.filter(Lower("telegram_username") == v).exists():
+            raise serializers.ValidationError("Telegram username already taken.")
         return v
 
-    def update(self, instance: User, validated_data: Dict[str, Any]) -> User:
-        # only safe fields
-        fullname = validated_data.get("fullname", None)
-        if fullname is not None:
-            instance.fullname = fullname.strip() or instance.fullname
 
-        # normalize and set
-        if "telegram_username" in validated_data:
-            instance.telegram_username = validated_data["telegram_username"]
+class AdminUserWriteSerializer(serializers.ModelSerializer):
+    # Superadmin may update role/is_active
+    phone_number = serializers.CharField(validators=[_phone_validator])
 
-        instance.save(update_fields=["fullname", "telegram_username", "updated_at"])
-        return instance
-
-
-# --------- Admin update ----------
-class AdminUserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("fullname", "role", "is_active")
-        extra_kwargs = {
-            "fullname": {"required": False},
-            "role": {"required": False},
-            "is_active": {"required": False},
-        }
+        fields = [
+            "fullname",
+            "telegram_username",
+            "phone_number",
+            "role",
+            "is_active",
+        ]
 
-    def validate_role(self, v: str) -> str:
-        if v not in {User.Roles.SUPERADMIN, User.Roles.STUDENT, User.Roles.TEACHER}:
-            raise serializers.ValidationError("Invalid role.")
+    def validate_telegram_username(self, v: Optional[str]):
+        if not v:
+            return None
+        v = v.strip().lstrip("@").lower()
+        if not User.objects.tg_username_re.match(v):
+            raise serializers.ValidationError(
+                "Invalid Telegram username (5-32 chars, letters/digits/_)."
+            )
+        qs = (
+            User.objects.exclude(pk=self.instance.pk)
+            if self.instance
+            else User.objects.all()
+        )
+        if qs.filter(Lower("telegram_username") == v).exists():
+            raise serializers.ValidationError("Telegram username already taken.")
         return v

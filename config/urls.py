@@ -8,6 +8,8 @@ urlpatterns = [
     path("api/accounts/", include("apps.accounts.urls")),
     path("api/profiles/", include("apps.profiles.urls")),
     path("api/users/", include("apps.users.urls")),
+    path("api/user_tests/", include("apps.user_tests.urls")),
+    path("api/teacher-checking/", include("apps.teacher_checking.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/docs/",
