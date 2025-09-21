@@ -19,6 +19,7 @@ class Test(models.Model):
     reading = models.ForeignKey(
         Reading, on_delete=models.CASCADE, null=True, blank=True
     )
+    price = models.DecimalField(max_digits=12, decimal_places=2)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
