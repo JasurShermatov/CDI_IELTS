@@ -1,5 +1,6 @@
 # bot/app/handlers/auth.py
 from __future__ import annotations
+
 import logging
 import time
 from aiogram import Router, types, F
@@ -11,10 +12,25 @@ from ..otp_cache import get_code, set_code
 router = Router(name="auth")
 log = logging.getLogger(__name__)
 
+# Tugma matnlari
 REGISTER_BTN = "📲 Register code"
 LOGIN_BTN = "🔐 Login code"
 
-# Kichik anti-spam (debounce) — 2 soniya ichida qayta bosilsa e’tiborsiz
+# Aliaslar (emoji bilan/emosjisiz variantlar)
+REGISTER_ALIASES = [
+    REGISTER_BTN,
+    "Register code",
+    "📲Register code",
+    "Register code📲",
+]
+LOGIN_ALIASES = [
+    LOGIN_BTN,
+    "Login code",
+    "🔐Login code",
+    "Login code🔐",
+]
+
+# Debounce (anti-spam)
 _last_press: dict[int, float] = {}
 DEBOUNCE_SEC = 2
 
@@ -31,12 +47,11 @@ async def _handle_purpose(msg: types.Message, purpose: str) -> None:
         await msg.answer("Telegram foydalanuvchi ma’lumoti yo‘q.")
         return
     if _debounced(msg.from_user.id):
-        return  # jim o‘tamiz
+        return
 
     tg_id = msg.from_user.id
     tg_username = msg.from_user.username or ""
 
-    # 1) Avval statusni tekshir
     try:
         status = await backend_client.get_otp_status(
             telegram_id=tg_id, telegram_username=tg_username, purpose=purpose
@@ -50,7 +65,6 @@ async def _handle_purpose(msg: types.Message, purpose: str) -> None:
     remaining = int(status.get("remaining_seconds") or 0)
 
     if active and remaining > 0:
-        # Keshda kod bo‘lsa — foydalanuvchiga aniq kodni ko‘rsatamiz
         cached = get_code(tg_id, purpose)
         if cached:
             code, rem = cached
@@ -65,7 +79,6 @@ async def _handle_purpose(msg: types.Message, purpose: str) -> None:
             )
         return
 
-    # 2) Aktiv bo‘lmasa yangi kod generatsiya va push
     new_code = generate_otp()
     try:
         r = await backend_client.push_otp(
@@ -80,7 +93,6 @@ async def _handle_purpose(msg: types.Message, purpose: str) -> None:
         return
 
     if r.status_code == 201:
-        # Kod bazaga kirdi → 120s TTL deb keshga yozamiz
         set_code(tg_id, purpose, new_code, ttl_seconds=120)
         await msg.answer(
             f"✅ {purpose.title()} OTP: *{new_code}*\n"
@@ -91,7 +103,6 @@ async def _handle_purpose(msg: types.Message, purpose: str) -> None:
         return
 
     if r.status_code == 409:
-        # Kimdir orada kod olgan — qayta status olib qolgan vaqtni aytamiz
         try:
             status = await backend_client.get_otp_status(
                 telegram_id=tg_id, telegram_username=tg_username, purpose=purpose
@@ -105,16 +116,15 @@ async def _handle_purpose(msg: types.Message, purpose: str) -> None:
         )
         return
 
-    # boshqa statuslar raise_for_status bilan allaqachon ko‘tarilgan bo‘lardi
     await msg.answer("❌ Kutilmagan xatolik.")
 
 
-# Ahamiyat: Aiogram v3 da filterlar F.text == "..." ko‘rinishida yoziladi
-@router.message(F.text == REGISTER_BTN)
+# --- Handlerlar ---
+@router.message(F.text.in_(REGISTER_ALIASES))
 async def register_code(msg: types.Message) -> None:
     await _handle_purpose(msg, "register")
 
 
-@router.message(F.text == LOGIN_BTN)
+@router.message(F.text.in_(LOGIN_ALIASES))
 async def login_code(msg: types.Message) -> None:
     await _handle_purpose(msg, "login")

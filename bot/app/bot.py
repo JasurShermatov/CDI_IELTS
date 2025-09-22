@@ -1,5 +1,6 @@
+# bot/app/bot.py
 from __future__ import annotations
-import asyncio
+
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -17,6 +18,6 @@ def build_bot() -> Bot:
 
 def build_dispatcher() -> Dispatcher:
     dp = Dispatcher()
-    dp.include_router(common.router)
     dp.include_router(auth.router)
+    dp.include_router(common.router)
     return dp

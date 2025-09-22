@@ -1,5 +1,6 @@
 # bot/app/state.py
 from __future__ import annotations
+
 import time
 from dataclasses import dataclass
 from typing import Dict, Tuple, Optional
@@ -8,20 +9,18 @@ from typing import Dict, Tuple, Optional
 @dataclass
 class OtpEntry:
     code: str
-    expires_at: float  # epoch seconds
-    last_req_at: float  # oxirgi "so'rash" vaqti (rate-limit uchun)
-    hits_window_start: float  # 10s oynaning boshlanishi
-    hits_in_window: int  # shu oynadagi requestlar soni
+    expires_at: float
+    last_req_at: float
+    hits_window_start: float
+    hits_in_window: int
 
 
-# (telegram_id, purpose) -> OtpEntry
 _otp_cache: Dict[Tuple[int, str], OtpEntry] = {}
 
-# sozlamalar
-OTP_TTL_SEC = 120  # 2 daqiqa
-MIN_INTERVAL_SEC = 2  # har 2 soniyada 1 marotaba
-WINDOW_SEC = 10  # 10 soniyalik oyna
-MAX_HITS_IN_WINDOW = 5  # 10 sekundda 5 tadan ko‘p emas
+OTP_TTL_SEC = 120
+MIN_INTERVAL_SEC = 2
+WINDOW_SEC = 10
+MAX_HITS_IN_WINDOW = 5
 
 
 def now() -> float:

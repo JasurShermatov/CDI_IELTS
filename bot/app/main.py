@@ -1,3 +1,4 @@
+# bot/app/main.py
 from __future__ import annotations
 import asyncio
 import uvloop
@@ -16,12 +17,13 @@ async def _main() -> None:
     bot = build_bot()
     dp = build_dispatcher()
 
-    # health server
     asyncio.create_task(start_health_server())
+
+    await bot.delete_webhook(drop_pending_updates=True)
 
     log.info("Starting polling...")
     try:
-        await dp.start_polling(bot)
+        await dp.start_polling(bot, allowed_updates=["message"])
     finally:
         await backend_client.close()
         await bot.session.close()

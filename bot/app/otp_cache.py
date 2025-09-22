@@ -1,9 +1,9 @@
 # bot/app/otp_cache.py
 from __future__ import annotations
+
 import time
 from typing import Optional, Tuple
 
-# key = (telegram_id, purpose) -> (code, expires_at_epoch)
 _store: dict[tuple[int, str], tuple[str, float]] = {}
 
 

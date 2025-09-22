@@ -1,8 +1,10 @@
 # bot/app/api.py
 from __future__ import annotations
+
 import os
+from typing import Any
+
 import httpx
-from typing import Any, Optional
 
 BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://web:8000")
 INGEST_TOKEN = os.getenv("BOT_INGEST_TOKEN")
@@ -12,6 +14,9 @@ class BackendClient:
     def __init__(self) -> None:
         self._client = httpx.AsyncClient(base_url=BACKEND_BASE_URL, timeout=10.0)
         self._hdr = {"X-Bot-Token": INGEST_TOKEN or ""}
+
+    async def close(self) -> None:
+        await self._client.aclose()
 
     async def get_otp_status(
         self, *, telegram_id: int, telegram_username: str, purpose: str
@@ -41,7 +46,6 @@ class BackendClient:
                 "purpose": purpose,
             },
         )
-        # 201 = stored; 409 = conflict (aktiv mavjud)
         if r.status_code not in (201, 409):
             r.raise_for_status()
         return r

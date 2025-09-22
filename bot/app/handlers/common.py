@@ -11,11 +11,31 @@ router = Router(name="common")
 @router.message(CommandStart())
 async def start_cmd(msg: types.Message) -> None:
     await msg.answer(
-        "Salom! Men CDI IELTS botiman. Kerakli OTP turini tanlang:",
+        "👋 Assalomu alaykum!\n\n"
+        "Men *CDI IELTS* rasmiy botiman. "
+        "Bu bot orqali siz ro‘yxatdan o‘tish yoki tizimga kirish uchun zarur bo‘lgan OTP kodlarini olishingiz mumkin.\n\n"
+        "Quyidagi menyudan kerakli bo‘limni tanlang:",
         reply_markup=main_menu(),
+        parse_mode="Markdown",
     )
 
 
 @router.message(Command("help"))
 async def help_cmd(msg: types.Message) -> None:
-    await msg.answer("📎 /start — menyu\n📲 Register code\n🔐 Login code")
+    await msg.answer(
+        "ℹ️ *Yordam bo‘limi*\n\n"
+        "Botdan foydalanish bo‘yicha qo‘llanma:\n"
+        "1️⃣ /start — asosiy menyuni ochadi\n"
+        "2️⃣ 📲 *Register code* — yangi foydalanuvchi sifatida ro‘yxatdan o‘tish OTP kodini olasiz\n"
+        "3️⃣ 🔐 *Login code* — tizimga kirish uchun OTP kodini olasiz\n\n"
+        "❗ Diqqat: OTP kodlari 2 daqiqa davomida amal qiladi.",
+        parse_mode="Markdown",
+    )
+
+
+@router.message()
+async def fallback_cmd(msg: types.Message) -> None:
+    await msg.answer(
+        "⚠️ Noma’lum buyruq.\n\n"
+        "Menyu uchun 👉 /start ni yozing yoki tugmalardan foydalaning."
+    )

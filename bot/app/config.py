@@ -1,6 +1,8 @@
+#  bot/app/config.py
 from __future__ import annotations
+
+from pydantic import Field
 from pydantic_settings import BaseSettings
-from pydantic import Field, AnyHttpUrl
 
 
 class Settings(BaseSettings):

@@ -1,6 +1,8 @@
+#  bot/app/health.py
 from __future__ import annotations
-import asyncio
+
 from aiohttp import web
+
 from .config import settings
 
 
