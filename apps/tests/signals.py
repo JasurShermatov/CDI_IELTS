@@ -33,7 +33,6 @@ def create_sections_for_test(sender, instance: Test, created, **kwargs):
         )
         reading.passages.add(passage)
 
-
     task_two = TaskTwo.objects.create(topic=f"{instance.title} Task Two")
     task_one = TaskOne.objects.create(
         topic=f"{instance.title} Task One",

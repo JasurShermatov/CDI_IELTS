@@ -42,7 +42,6 @@ class StudentProfile(UUIDPrimaryKeyMixin, TimeStampedMixin):
                 check=Q(balance__gte=0),
                 name="studprof_balance_gte_0",
             ),
-
             models.CheckConstraint(
                 check=(
                     (Q(is_approved=True) & Q(type="offline"))

@@ -3,6 +3,7 @@ from django.db.models import Exists, OuterRef
 from django.shortcuts import get_object_or_404
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter
+from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -25,17 +26,13 @@ from .services import purchase_test
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def all_tests(request):
-
     purchased_qs = UserTest.objects.filter(user=request.user, test=OuterRef("pk"))
     tests = (
         Test.objects.all()
         .annotate(purchased=Exists(purchased_qs))
         .order_by("-created_at")
     )
-    if not tests.exists():
-        return Response({"message": "Hali test mavjud emas"})
     return Response(TestListItemSerializer(tests, many=True).data)
-
 
 
 @extend_schema(
@@ -45,11 +42,12 @@ def all_tests(request):
         OpenApiParameter(
             name="test_id",
             type=OpenApiTypes.UUID,
-            location=OpenApiParameter.PATH,
+            location="path",  # <- shu
             description="Sotib olinadigan test ID-si",
+            required=True,
         )
     ],
-    responses={200: UserTestSerializer},
+    responses={201: UserTestSerializer},
 )
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -61,8 +59,7 @@ def purchase_test_api(request, test_id):
         ut = purchase_test(user=user, test=test)  # -> UserTest
     except Exception as e:
         return Response({"error": str(e)}, status=400)
-    return Response(UserTestSerializer(ut).data)
-
+    return Response(UserTestSerializer(ut).data, status=status.HTTP_201_CREATED)
 
 
 @extend_schema(
@@ -82,7 +79,6 @@ def my_tests(request):
     return Response(UserTestSerializer(uts, many=True).data)
 
 
-
 @extend_schema(
     tags=["UserTests"],
     summary="Mening natijalarim (Result reviews)",
@@ -91,12 +87,9 @@ def my_tests(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def my_results(request):
-
     results = (
         TestResult.objects.filter(user_test__user=request.user)
         .select_related("user_test__test")
         .order_by("-created_at")
     )
-    if not results.exists():
-        return Response({"message": "Hali natijalar mavjud emas"})
     return Response(TestResultSerializer(results, many=True).data)

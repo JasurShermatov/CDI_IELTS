@@ -25,7 +25,6 @@ class UserAnswerAdmin(admin.ModelAdmin):
     raw_id_fields = ("user_test", "question")
 
 
-
 @admin.register(TestResult)
 class TestResultAdmin(admin.ModelAdmin):
     list_display = (

@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from apps.tests.views import TestViewSet, QuestionSetViewSet
 
 router = DefaultRouter()
-router.register(r"tests", TestViewSet, basename="tests")
+router.register(r"", TestViewSet, basename="tests")
 router.register(r"question-sets", QuestionSetViewSet, basename="question-sets")
 
 urlpatterns = [

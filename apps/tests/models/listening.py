@@ -7,7 +7,7 @@ from .question import QuestionSet
 
 
 class ListeningSection(models.Model):
-    name = models.CharField()
+    name = models.CharField(max_length=255)
     mp3_file = models.FileField(
         upload_to="listening/mp3/",
         null=True,

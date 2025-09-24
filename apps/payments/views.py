@@ -104,9 +104,10 @@ def click_webhook(request):
     txn = payload.get("transaction") or payload.get("merchant_trans_id") or ""
     try:
         payment_id = UUID(str(txn))
-    except Exception:
+    except (ValueError, TypeError):
         return Response(
-            {"error": "Invalid transaction id"}, status=status.HTTP_400_BAD_REQUEST
+            {"error": "Invalid transaction id"},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     action = str(payload.get("action", "")).lower()
@@ -148,9 +149,12 @@ def click_webhook(request):
 
         if action in {"complete", "pay"}:
             if error != "0":
-                payment.error_code = error
-                payment.error_note = error_note or "Provider declined"
-                mark_payment_failed(payment=payment, webhook_payload=payload)
+                mark_payment_failed(
+                    payment=payment,
+                    webhook_payload=payload,
+                    error_code=error,
+                    error_note=error_note or "Provider declined",
+                )
                 return Response({"status": "failed", "payment_id": str(payment.id)})
 
             try:
@@ -193,9 +197,9 @@ def click_webhook(request):
     ),
     parameters=[
         OpenApiParameter(
-            "payment_id",
-            OpenApiTypes.UUID,
-            OpenApiParameter.QUERY,
+            name="payment_id",
+            type=OpenApiTypes.UUID,
+            location="query",  # <-- shu yer
             description="Payment ID (uuid)",
         ),
     ],

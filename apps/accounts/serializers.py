@@ -119,6 +119,7 @@ class LoginVerifySerializer(serializers.Serializer):
         vc.consume()
         return validated_data["user"]
 
+
 class OtpIngestSerializer(serializers.Serializer):
 
     telegram_id = serializers.IntegerField(required=False)

@@ -68,7 +68,6 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-
 class AllTestItemSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     title = serializers.CharField()
@@ -98,10 +97,7 @@ class ResultItemSerializer(serializers.Serializer):
 
 class StudentDashboardResponseSerializer(serializers.Serializer):
     profile = StudentProfileSerializer()
-    sections = serializers.DictField(
-        child=serializers.JSONField()
-    )
-
+    sections = serializers.DictField(child=serializers.JSONField())
 
 
 class SubmissionItemSerializer(serializers.Serializer):
@@ -118,6 +114,4 @@ class SubmissionItemSerializer(serializers.Serializer):
 
 class TeacherDashboardResponseSerializer(serializers.Serializer):
     profile = TeacherProfileSerializer()
-    sections = serializers.DictField(
-        child=serializers.JSONField()
-    )
+    sections = serializers.DictField(child=serializers.JSONField())

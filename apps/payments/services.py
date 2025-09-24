@@ -10,6 +10,7 @@ from django.db.models import F
 from django.utils import timezone
 
 from apps.profiles.models import StudentProfile, StudentTopUpLog
+
 from .models import Payment, PaymentStatus
 
 
@@ -61,9 +62,30 @@ def mark_payment_paid_and_topup(
 
 
 def mark_payment_failed(
-    *, payment: Payment, webhook_payload: Dict[str, Any]
+    *,
+    payment: Payment,
+    webhook_payload: Dict[str, Any],
+    error_code: str | None = None,
+    error_note: str | None = None,
 ) -> Payment:
     payment.status = PaymentStatus.FAILED
     payment.provider_payload = webhook_payload or {}
-    payment.save(update_fields=["status", "provider_payload", "updated_at"])
+
+    if error_code is None:
+        error_code = str(webhook_payload.get("error", "") or "")
+    if error_note is None:
+        error_note = webhook_payload.get("error_note") or ""
+
+    if error_code:
+        payment.error_code = error_code
+    if error_note:
+        payment.error_note = error_note
+
+    update_fields = ["status", "provider_payload", "updated_at"]
+    if error_code:
+        update_fields.append("error_code")
+    if error_note:
+        update_fields.append("error_note")
+
+    payment.save(update_fields=update_fields)
     return payment

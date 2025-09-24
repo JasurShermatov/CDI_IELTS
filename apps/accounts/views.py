@@ -228,7 +228,6 @@ class OtpIngestView(generics.CreateAPIView):
 )
 class OtpStatusView(generics.GenericAPIView):
 
-
     permission_classes = [permissions.AllowAny]
     throttle_classes = [OTPStatusThrottle]
 

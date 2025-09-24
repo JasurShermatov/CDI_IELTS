@@ -121,8 +121,6 @@ class StudentApprovalLogListView(generics.ListAPIView):
         )
 
 
-
-
 @extend_schema(
     tags=["Profiles"],
     summary="Student dashboard: profile + all_tests + my_tests + results",
@@ -241,7 +239,6 @@ def student_dashboard(request):
             },
         }
     )
-
 
 
 @extend_schema(

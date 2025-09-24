@@ -27,7 +27,6 @@ class TestSerializer(serializers.ModelSerializer):
 
 class UserTestSerializer(serializers.ModelSerializer):
 
-
     test = TestSerializer(read_only=True)
 
     class Meta:
