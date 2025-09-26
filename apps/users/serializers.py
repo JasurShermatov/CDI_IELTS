@@ -42,16 +42,21 @@ class UserMeUpdateSerializer(serializers.ModelSerializer):
     def validate_telegram_username(self, v: Optional[str]):
         if not v:
             return None
+
         v = v.strip().lstrip("@").lower()
+
         if not User.objects.tg_username_re.match(v):
             raise serializers.ValidationError(
                 "Invalid Telegram username (5-32 chars, letters/digits/_)."
             )
+
         qs = User.objects.all()
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)
-        if qs.filter(Lower("telegram_username") == v).exists():
+
+        if qs.filter(telegram_username__iexact=v).exists():
             raise serializers.ValidationError("Telegram username already taken.")
+
         return v
 
 

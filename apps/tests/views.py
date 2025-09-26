@@ -1,7 +1,7 @@
-#  apps/tests/views.py
+# apps/tests/views.py
 from django.db.models import Count, Prefetch
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 from rest_framework import viewsets, mixins, permissions, filters
 
 from apps.tests.models.ielts import Test
@@ -34,7 +34,7 @@ READING_PREFETCH = Prefetch(
     summary="IELTS testlari ro'yxati",
     description=(
         "Barcha mavjud testlar. `ordering` parametri qo'llab-quvvatlanadi "
-        "(`created_at` yoki `title`)."
+        "(`created_at` yoki `title`). Bo'sh bo'lsa ham `200 OK` va `[]` qaytadi."
     ),
     parameters=[
         OpenApiParameter(
@@ -44,37 +44,63 @@ READING_PREFETCH = Prefetch(
             description="Masalan: `-created_at` yoki `title`",
         ),
     ],
+    responses={
+        200: OpenApiResponse(response=TestListSerializer(many=True), description="OK"),
+    },
 )
 class TestViewSet(
     mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet
 ):
-
     permission_classes = [permissions.AllowAny]
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["created_at", "title"]
     ordering = ["-created_at"]
+    lookup_value_regex = r"\d+"
 
     def get_queryset(self):
-
-        qs = (
-            Test.objects.all()
-            .select_related("writing__task_one", "writing__task_two")
-            .prefetch_related(LISTENING_PREFETCH, READING_PREFETCH)
-        )
-        if self.action == "list":
-            return qs.only("id", "title", "price", "created_at")
-        return qs
+        base = Test.objects.all()
+        if getattr(self, "action", None) == "list":
+            return base.only("id", "title", "price", "created_at")
+        return base.select_related(
+            "writing__task_one", "writing__task_two", "listening", "reading"
+        ).prefetch_related(LISTENING_PREFETCH, READING_PREFETCH)
 
     def get_serializer_class(self):
-        if self.action == "list":
-            return TestListSerializer
-        return TestDetailSerializer
+        return (
+            TestListSerializer
+            if getattr(self, "action", None) == "list"
+            else TestDetailSerializer
+        )
+
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response=TestListSerializer(many=True), description="OK"
+            ),
+        }
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(response=TestDetailSerializer, description="OK"),
+            404: OpenApiResponse(description="Not Found"),
+        }
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
 
 
 @extend_schema(
     tags=["Tests"],
     summary="Question set ro'yxati (summary)",
-    description="Har bir set uchun `questions_count` qaytaradi.",
+    description="Har bir set uchun `questions_count` qaytaradi. Bo‘sh bo‘lsa ham `200 OK` va `[]`.",
+    responses={
+        200: OpenApiResponse(
+            response=QuestionSetSummarySerializer(many=True), description="OK"
+        ),
+    },
 )
 class QuestionSetViewSet(
     mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet
@@ -83,13 +109,35 @@ class QuestionSetViewSet(
 
     def get_queryset(self):
         base = QuestionSet.objects.all()
-        if self.action == "list":
+        if getattr(self, "action", None) == "list":
             return base.annotate(questions_count=Count("questions")).only("id", "name")
         return base.prefetch_related("questions")
 
     def get_serializer_class(self):
         return (
             QuestionSetSummarySerializer
-            if self.action == "list"
+            if getattr(self, "action", None) == "list"
             else QuestionSetDetailSerializer
         )
+
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response=QuestionSetSummarySerializer(many=True), description="OK"
+            ),
+        }
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response=QuestionSetDetailSerializer, description="OK"
+            ),
+            404: OpenApiResponse(description="Not Found"),
+        }
+    )
+    def retrieve(self, request, *args, **kwargs):
+
+        return super().retrieve(request, *args, **kwargs)

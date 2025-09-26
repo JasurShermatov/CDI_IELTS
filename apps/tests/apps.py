@@ -9,3 +9,4 @@ class ExamConfig(AppConfig):
 
     def ready(self):
         from . import signals  # noqa
+        from . import signals_m2m  # noqa

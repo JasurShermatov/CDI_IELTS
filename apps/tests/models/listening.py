@@ -16,6 +16,8 @@ class ListeningSection(models.Model):
     questions_set = models.ManyToManyField(QuestionSet)
 
     def clean(self):
+        if not self.pk:
+            return
         if self.questions_set.count() > 4:
             raise ValidationError(
                 f"Maximum 4 question set allowed in section {self.pk}"
@@ -40,6 +42,8 @@ class Listening(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def clean(self):
+        if not self.pk:
+            return
         if self.sections.count() > 4:
             raise ValidationError(f"Maximum 4 section allowed in listening {self.pk}")
 

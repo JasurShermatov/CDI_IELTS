@@ -12,6 +12,8 @@ class ReadingPassage(models.Model):
     questions_set = models.ManyToManyField(QuestionSet)
 
     def clean(self):
+        if not self.pk:
+            return
         if self.questions_set.count() > 3:
             raise ValidationError(
                 f"Maximum 3 question sets allowed in passage {self.pk}"
@@ -34,6 +36,8 @@ class Reading(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def clean(self):
+        if not self.pk:
+            return
         if self.passages.count() > 3:
             raise ValidationError(f"Maximum 3 passages allowed in reading {self.pk}")
 

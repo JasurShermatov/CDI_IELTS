@@ -151,55 +151,79 @@ MEDIA_ROOT = BASE_DIR / "media"
 # ===================================
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+
 # ===================================
 # REST FRAMEWORK & JWT
 # ===================================
 REST_FRAMEWORK = {
     # --- Auth / Perms
-    "DEFAULT_AUTHENTICATION_CLASSES": [
+    "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ],
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
-    ],
+        # Browsable API uchun faqat DEBUG’da sessiya auth qulay:
+        *(
+            ("rest_framework.authentication.SessionAuthentication",)
+            if DEBUG
+            else tuple()
+        ),
+    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     # --- Parsers / Renderers
-    "DEFAULT_PARSER_CLASSES": [
+    "DEFAULT_PARSER_CLASSES": (
         "rest_framework.parsers.JSONParser",
         "rest_framework.parsers.FormParser",
         "rest_framework.parsers.MultiPartParser",
-    ],
-    "DEFAULT_RENDERER_CLASSES": (
-        ["rest_framework.renderers.JSONRenderer"]
-        + (["rest_framework.renderers.BrowsableAPIRenderer"] if DEBUG else [])
     ),
-    # --- Throttling (user-scoped)
-    "DEFAULT_THROTTLE_CLASSES": [
+    "DEFAULT_RENDERER_CLASSES": (
+        "rest_framework.renderers.JSONRenderer",
+        *(("rest_framework.renderers.BrowsableAPIRenderer",) if DEBUG else tuple()),
+    ),
+    # --- Filtering / Searching / Ordering (ko‘p endpointlarda kerak bo‘ladi)
+    "DEFAULT_FILTER_BACKENDS": (
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ),
+    # --- Throttling
+    # Eslatma: scope-lar ishlashi uchun ScopedRateThrottle NI ham yoqish shart,
+    # va view’larda `throttle_scope = "otp_ingest"` kabi qo‘yish kerak bo‘ladi.
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
-    ],
+        "rest_framework.throttling.ScopedRateThrottle",
+    ),
     "DEFAULT_THROTTLE_RATES": {
-        "user": "200/min",  # umumiy foydalanuvchi trafiki
-        "otp_ingest": "60/min",  # Bot → Backend push
-        "otp_verify": "20/min",  # /register/verify, /login/verify
-        "otp_status": "60/min",  # Botning /otp/status so‘rovlari
+        "anon": "100/min",
+        "user": "200/min",
+        "otp_ingest": "60/min",
+        "otp_verify": "20/min",
+        "otp_status": "60/min",
     },
     # --- API schema (Swagger/OpenAPI)
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    # --- Datetime format (Swagger va DRF chiqishi)
+    # --- Datetime format
     "DATETIME_FORMAT": "%Y-%m-%dT%H:%M:%SZ",
-    # --- Pagination (ixtiyoriy, hozircha o‘chirilgan)
-    # "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    # "PAGE_SIZE": 20,
+    # --- Pagination (tavsiya etiladi: count ko‘rinadi, bo‘sh ro‘yxatda ham aniqroq)
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+    # --- Testlar uchun qulaylik
+    "TEST_REQUEST_DEFAULT_FORMAT": "json",
 }
 
+
+# ===================================
+# Simple JWT
+# ===================================
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": False,
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+    "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
-    "ALGORITHM": "HS256",
-    "SIGNING_KEY": SECRET_KEY,
     "AUTH_HEADER_TYPES": ("Bearer",),
+    "ALGORITHM": "HS256",
+    # "SIGNING_KEY": SECRET_KEY,  # odatda default SECRET_KEY ishlatiladi
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
 }
+
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "CDI IELTS API",

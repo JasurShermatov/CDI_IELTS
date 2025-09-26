@@ -1,9 +1,9 @@
 #  apps/teacher_checking/views.py
+from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status
-from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
-from django.shortcuts import get_object_or_404
+from rest_framework.response import Response
 
 from apps.profiles.permissions import IsTeacherOrSuperAdmin
 from apps.user_tests.models import UserTest
