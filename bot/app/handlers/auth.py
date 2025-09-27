@@ -12,11 +12,9 @@ from ..otp_cache import get_code, set_code
 router = Router(name="auth")
 log = logging.getLogger(__name__)
 
-# Tugma matnlari
 REGISTER_BTN = "📲 Register code"
 LOGIN_BTN = "🔐 Login code"
 
-# Aliaslar (emoji bilan/emosjisiz variantlar)
 REGISTER_ALIASES = [
     REGISTER_BTN,
     "Register code",
@@ -30,7 +28,6 @@ LOGIN_ALIASES = [
     "Login code🔐",
 ]
 
-# Debounce (anti-spam)
 _last_press: dict[int, float] = {}
 DEBOUNCE_SEC = 2
 
@@ -119,7 +116,6 @@ async def _handle_purpose(msg: types.Message, purpose: str) -> None:
     await msg.answer("❌ Kutilmagan xatolik.")
 
 
-# --- Handlerlar ---
 @router.message(F.text.in_(REGISTER_ALIASES))
 async def register_code(msg: types.Message) -> None:
     await _handle_purpose(msg, "register")

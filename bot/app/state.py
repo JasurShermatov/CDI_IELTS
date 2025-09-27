@@ -33,29 +33,21 @@ def get_active_otp(tg_id: int, purpose: str) -> Optional[OtpEntry]:
     if not entry:
         return None
     if entry.expires_at <= now():
-        # muddati o‘tgan bo‘lsa o‘chirib yuboramiz
         _otp_cache.pop(key, None)
         return None
     return entry
 
 
 def can_request(tg_id: int, purpose: str) -> Tuple[bool, float]:
-    """
-    Rate-limit tekshiruvi.
-    Return: (allowed, wait_seconds_if_denied)
-    """
     t = now()
     key = (tg_id, purpose)
     entry = _otp_cache.get(key)
 
-    # Min interval
     if entry and (t - entry.last_req_at) < MIN_INTERVAL_SEC:
         return False, max(0.0, MIN_INTERVAL_SEC - (t - entry.last_req_at))
 
-    # Sliding window
     if entry:
         if (t - entry.hits_window_start) > WINDOW_SEC:
-            # yangi oyna
             entry.hits_window_start = t
             entry.hits_in_window = 0
         if entry.hits_in_window >= MAX_HITS_IN_WINDOW:
@@ -69,7 +61,6 @@ def record_hit(tg_id: int, purpose: str) -> None:
     entry = _otp_cache.get(key)
     if entry:
         entry.last_req_at = t
-        # oyna ichida hisoblash
         if (t - entry.hits_window_start) > WINDOW_SEC:
             entry.hits_window_start = t
             entry.hits_in_window = 1

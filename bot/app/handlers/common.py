@@ -13,7 +13,7 @@ async def start_cmd(msg: types.Message) -> None:
     await msg.answer(
         "👋 Assalomu alaykum!\n\n"
         "Men *CDI IELTS* rasmiy botiman. "
-        "Bu bot orqali siz ro‘yxatdan o‘tish yoki tizimga kirish uchun zarur bo‘lgan OTP kodlarini olishingiz mumkin.\n\n"
+        "Bu bot orqali siz ro‘yxatdan o‘tish yoki tizimga kirish uchun zarur bo‘lgan kodni olishingiz mumkin.\n\n"
         "Quyidagi menyudan kerakli bo‘limni tanlang:",
         reply_markup=main_menu(),
         parse_mode="Markdown",
@@ -28,7 +28,7 @@ async def help_cmd(msg: types.Message) -> None:
         "1️⃣ /start — asosiy menyuni ochadi\n"
         "2️⃣ 📲 *Register code* — yangi foydalanuvchi sifatida ro‘yxatdan o‘tish OTP kodini olasiz\n"
         "3️⃣ 🔐 *Login code* — tizimga kirish uchun OTP kodini olasiz\n\n"
-        "❗ Diqqat: OTP kodlari 2 daqiqa davomida amal qiladi.",
+        "❗ Diqqat: Kod 2 daqiqa davomida amal qiladi.",
         parse_mode="Markdown",
     )
 
