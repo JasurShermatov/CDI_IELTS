@@ -127,8 +127,11 @@ class LoginVerifyView(generics.CreateAPIView):
     tags=["accounts"],
     summary="OTP ingest (Bot → Backend)",
     description=(
-        "Telegram bot shu endpointga kodni push qiladi. Kod 2 daqiqa amal qiladi.\n"
-        "**Xavfsizlik**: `X-Bot-Token` header’da shared-secret bo‘lishi shart."
+        "⚠️ **FRONTEND uchun emas!**\n\n"
+        "Ushbu endpoint faqat **Telegram bot** tomonidan OTP (tasdiqlash kodi) yuborish uchun ishlatiladi. "
+        "Kod yuborilgan paytdan boshlab **2 daqiqa** davomida amal qiladi.\n\n"
+        "**Xavfsizlik**: So‘rov faqat `X-Bot-Token` header orqali yuborilgan **shared-secret** token bilan "
+        "tasdiqlangan bo‘lishi shart."
     ),
     request=OtpIngestSerializer,
     parameters=[
@@ -188,7 +191,15 @@ class OtpIngestView(generics.CreateAPIView):
 @extend_schema(
     tags=["accounts"],
     summary="OTP status (Bot → Backend)",
-    description="Bot uchun: berilgan telegram_id/username + purpose bo‘yicha aktiv OTP bor-yo‘qligini tekshiradi.",
+    description=(
+            "⚠️ **FRONTEND uchun emas!**\n\n"
+            "Ushbu endpoint faqat **Telegram bot** tomonidan OTP holatini "
+            "(faol/eskirgan) tekshirish uchun ishlatiladi.\n\n"
+            "So‘rovda `telegram_id` yoki `telegram_username`, hamda `purpose` (`register` | `login`) "
+            "bo‘lishi kerak.\n\n"
+            "**Xavfsizlik**: `X-Bot-Token` header orqali yuborilgan **shared-secret** bilan "
+            "autentifikatsiya qilinadi."
+    ),
     parameters=[
         OpenApiParameter(
             name="X-Bot-Token",
