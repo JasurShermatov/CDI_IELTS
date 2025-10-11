@@ -1,12 +1,14 @@
-# apps/payments/views.py
+#  apps/payments/views.py
 from __future__ import annotations
 
+import hashlib
 import logging
 from uuid import UUID
 
 from django.conf import settings
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -21,22 +23,65 @@ from .serializers import (
     PaymentPublicSerializer,
     PaymentDetailSerializer,
 )
-from .services import (
-    verify_click_request,
-    mark_payment_paid_and_topup,
-    mark_payment_failed,
-)
 
 log = logging.getLogger(__name__)
+
+
+def verify_click_request(payload: dict) -> bool:
+    secret = settings.CLICK["SECRET_KEY"]
+    sign_string = (
+        str(payload.get("click_trans_id", ""))
+        + str(payload.get("service_id", ""))
+        + str(payload.get("merchant_trans_id", ""))
+        + str(payload.get("amount", ""))
+        + str(payload.get("action", ""))
+        + str(payload.get("sign_time", ""))
+        + secret
+    )
+    calculated = hashlib.sha256(sign_string.encode("utf-8")).hexdigest()
+    provided = str(payload.get("sign_string", ""))
+    return calculated == provided
+
+
+def mark_payment_failed(
+    payment: Payment, webhook_payload: dict, error_code="1", error_note="Failed"
+):
+    payment.status = PaymentStatus.FAILED
+    payment.error_code = error_code
+    payment.error_note = error_note
+    payment.provider_payload = webhook_payload
+    payment.updated_at = timezone.now()
+    payment.save(
+        update_fields=[
+            "status",
+            "error_code",
+            "error_note",
+            "provider_payload",
+            "updated_at",
+        ]
+    )
+
+
+def mark_payment_paid_and_topup(payment: Payment, webhook_payload: dict):
+    sp = payment.student
+    sp.balance += payment.amount
+    sp.save(update_fields=["balance"])
+
+    payment.status = PaymentStatus.PAID
+    payment.provider_payload = webhook_payload
+    payment.completed_at = timezone.now()
+    payment.save(
+        update_fields=["status", "provider_payload", "completed_at", "updated_at"]
+    )
+
 
 
 @extend_schema(
     tags=["Payments"],
     summary="Top-up sessiya yaratish (Click redirect URL qaytaradi)",
     description=(
-        "Foydalanuvchi balansini to‘ldirish uchun topshiriq yaratadi. "
-        "Natijada `redirect_url` qaytadi — front shu URLga redirect qilib, "
-        "to‘lovni Click sahifasida tugatadi."
+        "Foydalanuvchi balansini to‘ldirish uchun Payment sessiya yaratadi. "
+        "`redirect_url` qaytaradi — frontend foydalanuvchini Click sahifasiga yo‘naltiradi."
     ),
     request=PaymentCreateSerializer,
     responses={201: PaymentPublicSerializer},
@@ -48,20 +93,23 @@ def create_topup(request):
     ser.is_valid(raise_exception=True)
 
     sp = get_object_or_404(StudentProfile, user=request.user)
+    amount = ser.validated_data["amount"]
 
     payment = Payment.objects.create(
         student=sp,
         provider=PaymentProvider.CLICK,
         status=PaymentStatus.CREATED,
-        amount=ser.validated_data["amount"],
+        amount=amount,
         currency="UZS",
     )
 
     redirect_url = (
         f"{settings.CLICK['BASE_URL']}"
         f"?merchant_id={settings.CLICK['MERCHANT_ID']}"
-        f"&amount={payment.amount}"
+        f"&merchant_user_id={settings.CLICK['MERCHANT_USER_ID']}"
+        f"&service_id={settings.CLICK.get('SERVICE_ID', '')}"
         f"&transaction={payment.id}"
+        f"&amount={payment.amount}"
         f"&return_url={settings.CLICK['RETURN_URL']}?payment_id={payment.id}"
         f"&cancel_url={settings.CLICK['CANCEL_URL']}?payment_id={payment.id}"
     )
@@ -75,28 +123,30 @@ def create_topup(request):
     tags=["Payments"],
     summary="Click webhook (prepare/check/complete/cancel)",
     description=(
-        "Click tomonidan yuboriladigan webhook. Signature va IP tekshiriladi. "
-        "`prepare/check` → payment PENDING; "
-        "`complete/pay` → PAID (balansga top-up yoziladi) yoki FAILED; "
-        "`cancel` → CANCELED."
+        "⚠️ **FRONT uchun EMAS.**\n\n"
+        "Bu endpointni faqat Click server avtomatik chaqiradi.\n"
+        "Frontend hech qachon bu yerga so‘rov yubormaydi.\n\n"
+        "Vazifasi: Click’dan kelgan `prepare`, `complete`, `cancel` kabi signalni qabul qilish, "
+        "imzo (signature) va IP manzilini tekshirish, va to‘lov statusini yangilash."
     ),
     request=OpenApiTypes.OBJECT,
     responses={200: OpenApiTypes.OBJECT},
 )
+
 @csrf_exempt
 @api_view(["POST"])
 def click_webhook(request):
-
     allowed_ips = set(settings.CLICK.get("ALLOWED_IPS", []))
-    remote_ip = request.META.get("REMOTE_ADDR")
+    remote_ip = request.META.get("REMOTE_ADDR", "")
+
     if allowed_ips and remote_ip not in allowed_ips:
-        log.warning("Click webhook blocked by IP: %s", remote_ip)
+        log.warning("❌ Click webhook blocked by IP: %s", remote_ip)
         return Response({"error": "IP not allowed"}, status=status.HTTP_403_FORBIDDEN)
 
     payload = request.data.copy()
 
     if not verify_click_request(payload):
-        log.warning("Click webhook invalid signature: %s", payload)
+        log.warning("❌ Click webhook invalid signature: %s", payload)
         return Response(
             {"error": "Invalid signature"}, status=status.HTTP_400_BAD_REQUEST
         )
@@ -106,8 +156,7 @@ def click_webhook(request):
         payment_id = UUID(str(txn))
     except (ValueError, TypeError):
         return Response(
-            {"error": "Invalid transaction id"},
-            status=status.HTTP_400_BAD_REQUEST,
+            {"error": "Invalid transaction id"}, status=status.HTTP_400_BAD_REQUEST
         )
 
     action = str(payload.get("action", "")).lower()
@@ -115,12 +164,7 @@ def click_webhook(request):
     error_note = payload.get("error_note", "")
 
     with transaction.atomic():
-        try:
-            payment = Payment.objects.select_for_update().get(id=payment_id)
-        except Payment.DoesNotExist:
-            return Response(
-                {"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND
-            )
+        payment = get_object_or_404(Payment.objects.select_for_update(), id=payment_id)
 
         if action in {"prepare", "check"}:
             if payment.status in {
@@ -150,18 +194,15 @@ def click_webhook(request):
         if action in {"complete", "pay"}:
             if error != "0":
                 mark_payment_failed(
-                    payment=payment,
-                    webhook_payload=payload,
-                    error_code=error,
-                    error_note=error_note or "Provider declined",
+                    payment, payload, error_code=error, error_note=error_note
                 )
                 return Response({"status": "failed", "payment_id": str(payment.id)})
 
             try:
-                mark_payment_paid_and_topup(payment=payment, webhook_payload=payload)
+                mark_payment_paid_and_topup(payment, payload)
             except Exception as exc:
-                log.exception("Top-up failed for payment %s: %s", payment.id, exc)
-                mark_payment_failed(payment=payment, webhook_payload=payload)
+                log.exception("❌ Top-up failed for payment %s: %s", payment.id, exc)
+                mark_payment_failed(payment, payload)
                 return Response(
                     {"error": "Top-up failed"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -188,18 +229,16 @@ def click_webhook(request):
         return Response({"error": "Unknown action"}, status=status.HTTP_400_BAD_REQUEST)
 
 
+
 @extend_schema(
     tags=["Payments"],
     summary="Payment status (frontend polling uchun)",
-    description=(
-        "Frontend to‘lovdan qaytgach, `payment_id` bo‘yicha statusni tekshiradi. "
-        "`paid` bo‘lsa — balans allaqachon to‘ldirilgan bo‘ladi."
-    ),
+    description="Frontend Click sahifasidan qaytgach, payment_id orqali statusni tekshiradi.",
     parameters=[
         OpenApiParameter(
             name="payment_id",
             type=OpenApiTypes.UUID,
-            location="query",  # <-- shu yer
+            location="query",
             description="Payment ID (uuid)",
         ),
     ],

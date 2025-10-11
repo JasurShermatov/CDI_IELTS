@@ -256,14 +256,17 @@ TELEGRAM_BOT_INGEST_TOKEN = env("TELEGRAM_BOT_INGEST_TOKEN", default="super-secr
 
 # click.uz to‘lov tizimi sozlamalari
 CLICK = {
-    "MERCHANT_ID": int(env("CLICK_MERCHANT_ID")),
+    "SERVICE_ID": env.int("CLICK_SERVICE_ID"),
+    "MERCHANT_ID": env.int("CLICK_MERCHANT_ID"),
+    "MERCHANT_USER_ID": env.int("CLICK_MERCHANT_USER_ID"),
     "SECRET_KEY": env("CLICK_SECRET_KEY"),
+    "BASE_URL": env("CLICK_BASE_URL"),
     "RETURN_URL": env("CLICK_RETURN_URL"),
     "CANCEL_URL": env("CLICK_CANCEL_URL"),
-    "BASE_URL": env("CLICK_BASE_URL"),
-    "MERCHANT_USER_ID": env.int("CLICK_MERCHANT_USER_ID", default=0),
-    # IP whitelist (Click production IP’lari – ro‘yxatini Click hujjatidan qo‘ying)
-    "ALLOWED_IPS": ["91.204.239.44", "91.204.239.45"],
+    "ALLOWED_IPS": [
+        "91.204.239.44",
+        "91.204.239.45",
+    ],
 }
 
 PAYMENTS = {

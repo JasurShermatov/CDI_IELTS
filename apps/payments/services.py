@@ -10,23 +10,23 @@ from django.db.models import F
 from django.utils import timezone
 
 from apps.profiles.models import StudentProfile, StudentTopUpLog
-
 from .models import Payment, PaymentStatus
 
 
 def _click_sign(payload: Dict[str, Any]) -> str:
     secret = settings.CLICK["SECRET_KEY"].encode()
     base = (
-        f"{payload.get('merchant_id','')}"
-        f"{payload.get('amount','')}"
-        f"{payload.get('transaction','')}"
-        f"{payload.get('action','')}"
+        f"{payload.get('merchant_id', '')}"
+        f"{payload.get('amount', '')}"
+        f"{payload.get('transaction', '')}"
+        f"{payload.get('action', '')}"
     ).encode()
     return hmac.new(secret, base, hashlib.md5).hexdigest()
 
 
 def verify_click_request(payload: Dict[str, Any]) -> bool:
-    provided = (payload.get("sign") or "").lower()
+
+    provided = (payload.get("sign") or "").lower().strip()
     expected = _click_sign(payload)
     return provided == expected
 
@@ -38,16 +38,18 @@ def mark_payment_paid_and_topup(
 
     if payment.status == PaymentStatus.PAID:
         return payment
+    amount = Decimal(str(payment.amount))
 
-    sp = payment.student
-    StudentProfile.objects.filter(pk=sp.pk).update(
-        balance=F("balance") + Decimal(payment.amount)
+    StudentProfile.objects.filter(pk=payment.student.pk).update(
+        balance=F("balance") + amount
     )
-    sp.refresh_from_db(fields=["balance"])
+
+    payment.student.refresh_from_db(fields=["balance"])
+
     StudentTopUpLog.objects.create(
-        student=sp,
-        amount=Decimal(payment.amount),
-        new_balance=sp.balance,
+        student=payment.student,
+        amount=amount,
+        new_balance=payment.student.balance,
         actor=None,
         note=f"Click top-up Payment<{payment.id}>",
     )
@@ -56,8 +58,14 @@ def mark_payment_paid_and_topup(
     payment.provider_payload = webhook_payload or {}
     payment.completed_at = timezone.now()
     payment.save(
-        update_fields=["status", "provider_payload", "completed_at", "updated_at"]
+        update_fields=[
+            "status",
+            "provider_payload",
+            "completed_at",
+            "updated_at",
+        ]
     )
+
     return payment
 
 
@@ -68,13 +76,12 @@ def mark_payment_failed(
     error_code: str | None = None,
     error_note: str | None = None,
 ) -> Payment:
+
     payment.status = PaymentStatus.FAILED
     payment.provider_payload = webhook_payload or {}
 
-    if error_code is None:
-        error_code = str(webhook_payload.get("error", "") or "")
-    if error_note is None:
-        error_note = webhook_payload.get("error_note") or ""
+    error_code = error_code or str(webhook_payload.get("error", "") or "")
+    error_note = error_note or webhook_payload.get("error_note", "")
 
     if error_code:
         payment.error_code = error_code

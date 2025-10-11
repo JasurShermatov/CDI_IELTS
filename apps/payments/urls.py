@@ -1,10 +1,12 @@
 # apps/payments/urls.py
 from django.urls import path
 
-from .views import create_topup, click_webhook, payment_status
+from . import views
+
+app_name = "payments"
 
 urlpatterns = [
-    path("topup/", create_topup, name="payments-topup"),
-    path("status/", payment_status, name="payments-status"),
-    path("click/webhook/", click_webhook, name="payments-click-webhook"),
+    path("topup/", views.create_topup, name="create-topup"),
+    path("status/", views.payment_status, name="payment-status"),
+    path("click/webhook/", views.click_webhook, name="click-webhook"),
 ]

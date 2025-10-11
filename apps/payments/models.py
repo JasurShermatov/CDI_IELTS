@@ -12,11 +12,11 @@ class PaymentProvider(models.TextChoices):
 
 
 class PaymentStatus(models.TextChoices):
-    CREATED = "created", "Created"  # sessiya ochilgan, redirect berilgan
-    PENDING = "pending", "Pending"  # Click prepare/check kelgan
-    PAID = "paid", "Paid"  # Click complete muvaffaqiyatli
-    FAILED = "failed", "Failed"  # xatolik/odam bekor qildi
-    CANCELED = "canceled", "Canceled"  # ixtiyoriy holat
+    CREATED = "created", "Created"
+    PENDING = "pending", "Pending"
+    PAID = "paid", "Paid"
+    FAILED = "failed", "Failed"
+    CANCELED = "canceled", "Canceled"
 
 
 class Payment(models.Model):
@@ -51,7 +51,7 @@ class Payment(models.Model):
     provider_payload = models.JSONField(default=dict, blank=True)  # webhook raw
 
     error_code = models.CharField(max_length=20, blank=True, default="")
-    error_note = models.CharField(max_length=255, blank=True, default="")
+    error_note = models.TextField(max_length=255, blank=True, default="")
 
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)

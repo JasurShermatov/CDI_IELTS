@@ -17,7 +17,6 @@ class DjangoValidationError:
         self.message = message
 
 
-
 class RegisterStartSerializer(serializers.Serializer):
     fullname = serializers.CharField(max_length=100)
     phone_number = serializers.CharField(max_length=20)
