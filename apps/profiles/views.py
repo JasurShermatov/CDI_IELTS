@@ -1,3 +1,4 @@
+#  apps/profiles/views.py
 from __future__ import annotations
 
 from typing import Dict, Any, List
@@ -42,10 +43,10 @@ def _qp_int(qp, key: str, default: int = 0) -> int:
 
 def _sub_to_item(s: TeacherSubmission) -> Dict[str, Any]:
 
-    ut = s.user_test  # select_related bilan oldindan join qilingan
+    ut = s.user_test
     return {
         "id": s.id,
-        "user_test_id": s.user_test_id,
+        "user_test_id": s.user_test_id, # type: ignore[attr-defined]
         "student_fullname": ut.user.fullname,
         "test_title": ut.test.title,
         "task": s.task,
@@ -87,7 +88,7 @@ class TeacherMeView(generics.RetrieveAPIView):
         OpenApiParameter(
             name="limit",
             type=OpenApiTypes.INT,
-            location=OpenApiParameter.QUERY,
+            location="query",
             description="Qatorlar soni (ixtiyoriy).",
         )
     ],
@@ -103,11 +104,19 @@ class StudentTopUpLogListView(generics.ListAPIView):
             .select_related("actor")
             .order_by("-created_at")
         )
-        limit = _qp_int(self.request.query_params, "limit")
+        limit = _qp_int(self.request.query_params, "limit")  # type: ignore[attr-defined]
         return qs[:limit] if limit > 0 else qs
 
 
-@extend_schema(tags=["Profiles"], summary="Student approval loglari")
+@extend_schema(
+    tags=["Profiles"],
+    summary="Student approval loglari",
+    description=(
+        "⚠️ **FRONTEND uchun emas!**\n\n"
+        "Ushbu endpoint faqat **admin yoki backend tizim** tomonidan "
+        "studentning tasdiqlanish tarixini (approval loglarini) ko‘rish uchun ishlatiladi."
+    ),
+)
 class StudentApprovalLogListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated, IsStudent]
     serializer_class = StudentApprovalLogSerializer
@@ -121,6 +130,7 @@ class StudentApprovalLogListView(generics.ListAPIView):
         )
 
 
+
 @extend_schema(
     tags=["Profiles"],
     summary="Student dashboard: profile + all_tests + my_tests + results",
@@ -128,19 +138,19 @@ class StudentApprovalLogListView(generics.ListAPIView):
         OpenApiParameter(
             name="all_limit",
             type=OpenApiTypes.INT,
-            location=OpenApiParameter.QUERY,
+            location="query",
             description="All tests limit.",
         ),
         OpenApiParameter(
             name="my_limit",
             type=OpenApiTypes.INT,
-            location=OpenApiParameter.QUERY,
+            location="query",
             description="My tests limit.",
         ),
         OpenApiParameter(
             name="res_limit",
             type=OpenApiTypes.INT,
-            location=OpenApiParameter.QUERY,
+            location="query",
             description="Results limit.",
         ),
     ],
@@ -171,7 +181,7 @@ def student_dashboard(request):
 
     all_tests: List[Dict[str, Any]] = [
         {
-            "id": t.id,
+            "id": t.id,   # type: ignore[attr-defined]
             "title": t.title,
             "price": getattr(t, "price", 0),
             "purchased": bool(getattr(t, "purchased", False)),
@@ -216,7 +226,7 @@ def student_dashboard(request):
 
     results: List[Dict[str, Any]] = [
         {
-            "user_test_id": tr.user_test_id,
+            "user_test_id": tr.user_test_id,  # type: ignore[attr-defined]
             "test_id": tr.user_test.test_id,
             "test_title": tr.user_test.test.title,
             "listening_score": tr.listening_score,
@@ -248,19 +258,19 @@ def student_dashboard(request):
         OpenApiParameter(
             name="all_limit",
             type=OpenApiTypes.INT,
-            location=OpenApiParameter.QUERY,
+            location="query",
             description="All writing limit.",
         ),
         OpenApiParameter(
             name="chk_limit",
             type=OpenApiTypes.INT,
-            location=OpenApiParameter.QUERY,
+            location="query",
             description="My checking limit.",
         ),
         OpenApiParameter(
             name="done_limit",
             type=OpenApiTypes.INT,
-            location=OpenApiParameter.QUERY,
+            location="query",
             description="My checked limit.",
         ),
     ],
