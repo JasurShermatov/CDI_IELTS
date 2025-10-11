@@ -12,24 +12,37 @@ from apps.users.models import User
 from .models import VerificationCode
 
 
-class RegisterStartSerializer(serializers.Serializer):
+class DjangoValidationError:
+    def __init__(self, message: str):
+        self.message = message
 
+
+
+class RegisterStartSerializer(serializers.Serializer):
     fullname = serializers.CharField(max_length=100)
     phone_number = serializers.CharField(max_length=20)
     role = serializers.ChoiceField(
         choices=[(User.Roles.STUDENT, "student"), (User.Roles.TEACHER, "teacher")]
     )
 
-    def validate(self, attrs: Dict[str, Any]) -> Dict[str, Any]:
-        phone = attrs["phone_number"]
+    def validate(self, attrs):
+        raw = attrs["phone_number"]
+        phone = (raw or "").strip()
+        for ch in (" ", "-", "(", ")"):
+            phone = phone.replace(ch, "")
+        try:
+            User.objects.phone_validator(phone)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({"phone_number": e.message})
         if User.objects.filter(phone_number=phone).exists():
             raise serializers.ValidationError(
                 {"phone_number": "This phone number is already registered."}
             )
+        attrs["phone_number"] = phone
         return attrs
 
     @transaction.atomic
-    def create(self, validated_data: Dict[str, Any]) -> User:
+    def create(self, validated_data):
         return User.objects.create_user(**validated_data)
 
 
