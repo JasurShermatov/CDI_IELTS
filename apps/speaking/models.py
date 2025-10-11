@@ -29,4 +29,4 @@ class SpeakingRequest(UUIDPrimaryKeyMixin, TimeStampedMixin):
         ]
 
     def __str__(self) -> str:
-        return f"SpeakingRequest<{self.id}> {self.student_id} {self.fee_amount} {self.currency}"
+        return f"SpeakingRequest<{self.id}> {self.student_id} {self.fee_amount} {self.currency}"  # type: ignore[attr-defined]

@@ -35,7 +35,7 @@ class TeacherSubmissionSerializer(serializers.ModelSerializer):
 
 class SubmissionCreateSerializer(serializers.Serializer):
     user_test_id = serializers.UUIDField()
-    task = serializers.ChoiceField(choices=TeacherSubmission.Task.choices)
+    task = serializers.ChoiceField(choices=TeacherSubmission.Task.choices)  # type: ignore[attr-defined]
     text = serializers.CharField()
 
 

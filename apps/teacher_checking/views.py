@@ -79,17 +79,33 @@ class MyCheckedList(generics.ListAPIView):
         )
 
 
-@extend_schema(tags=["Teacher Checking"], summary="Claim one submission (safe lock)")
+@extend_schema(
+    tags=["Teacher Checking"],
+    summary="Claim one submission (safe lock)",
+    description=(
+        "⚠️ **INTERNAL API — NOT for frontend use!**\n\n"
+        "Bu endpoint backend tizim tomonidan submission’ni xavfsiz tarzda "
+        "teacher’ga biriktirish (safe lock) uchun ishlatiladi.\n\n"
+        "- Maqsad: bir nechta teacher bir vaqtning o‘zida bitta submission’ni "
+        "tekshirishni boshlamasligi uchun.\n"
+        "- Agar submission allaqachon boshqa teacher tomonidan olingan bo‘lsa, "
+        "xato qaytariladi (`already claimed`).\n"
+        "- Faqat `Teacher` yoki `SuperAdmin` rollarida ishlaydi.\n\n"
+        "**Frontend tomonidan to‘g‘ridan-to‘g‘ri chaqirilmaydi.**"
+    ),
+)
+
+
 @api_view(["POST"])
 @permission_classes([permissions.IsAuthenticated, IsTeacherOrSuperAdmin])
 def claim_view(request):
     ser = ClaimSerializer(data=request.data)
     ser.is_valid(raise_exception=True)
     sub = claim_submission(
-        submission_id=ser.validated_data["submission_id"], teacher=request.user
+        submission_id=ser.validated_data["submission_id"],
+        teacher=request.user
     )
     return Response(TeacherSubmissionSerializer(sub).data)
-
 
 @extend_schema(tags=["Teacher Checking"], summary="Grade submission and finish")
 @api_view(["POST"])

@@ -23,11 +23,11 @@ class TeacherSubmission(models.Model):
     user_test = models.ForeignKey(
         UserTest, on_delete=models.CASCADE, related_name="writing_submissions"
     )
-    task = models.CharField(max_length=10, choices=Task.choices)
+    task = models.CharField(max_length=10, choices=Task.choices) # type: ignore[attr-defined]
 
     submitted_text = models.TextField()
     status = models.CharField(
-        max_length=20, choices=Status.choices, default=Status.REQUESTED, db_index=True
+        max_length=20, choices=Status.choices, default=Status.REQUESTED, db_index=True # type: ignore[attr-defined]
     )
     teacher = models.ForeignKey(
         User,
@@ -59,4 +59,4 @@ class TeacherSubmission(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.user_test_id} {self.task} {self.status}"
+        return f"{self.user_test_id} {self.task} {self.status}"  # type: ignore[attr-defined]

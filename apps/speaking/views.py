@@ -13,6 +13,7 @@ from .models import SpeakingRequest
 
 @extend_schema(
     tags=["Speaking"],
+
     summary="Speaking so'rovi yaratish (balance dan yechadi + Admin TG xabari)",
     request=SpeakingRequestCreateSerializer,
     responses={201: SpeakingRequestSerializer},

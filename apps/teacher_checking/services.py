@@ -70,7 +70,7 @@ def grade_submission(
         .select_related("user_test")
         .get(id=submission_id)
     )
-    if sub.teacher_id and sub.teacher_id != teacher.id:
+    if sub.teacher_id and sub.teacher_id != teacher.id:   # type: ignore[attr-defined]
         raise ValidationError("This submission is assigned to another teacher.")
     if sub.status != TeacherSubmission.Status.IN_CHECKING:
         raise ValidationError("Submission must be in 'in_checking' state to grade.")
@@ -91,7 +91,6 @@ def grade_submission(
         ]
     )
 
-    # Update TestResult (avg writing & overall)
     ut = sub.user_test
     tr, _ = TestResult.objects.get_or_create(user_test=ut)
 
