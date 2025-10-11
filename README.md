@@ -1,171 +1,159 @@
 # CDI IELTS Platform
-A comprehensive Django-based platform for IELTS test management and practice.
+A Django-based platform for IELTS practice and test management with user profiles, payments, and admin tools.
 
+- API docs: /api/docs
+- Schema: /api/schema
 
+Table of contents
+- Overview
+- Features
+- Tech stack
+- Quick start (local)
+- Environment variables
+- Running (local and Docker)
+- Payments (Click) — Top-up flow
+- Project structure
+- Useful commands
+- Contributing
 
+Overview
+CDI IELTS is a backend service that powers an IELTS practice platform. It provides authentication, user profiles, tests, speaking module, teacher checking, and payment top-ups via Click.
 
-Let me explore the project structure to give you an overview.Let me analyze this project structure. This appears to be a Django-based project called "cdi_ielts" with the following key characteristics:
-1. **Project Structure**:
-    - It's a Django web application (evidenced by `manage.py` and typical Django directory structure)
-    - Has Docker support (`Dockerfile` and `docker-compose.yml`)
-    - Uses environment variables (`.env` file)
+Features
+- JWT auth and user accounts
+- Profiles with balances and top-up history
+- IELTS tests and user test tracking
+- Speaking module and teacher checking flows
+- Payments: Click integration (top-up redirect + webhook)
+- OpenAPI/Swagger docs with drf-spectacular
 
-2. **Main Components**:
-    - `apps/` - Contains Django applications
-    - `bot/` - Likely contains bot-related functionality
-    - `config/` - Project configuration files
-    - `static/` - Static files directory
-
-3. **Development Tools**:
-    - Uses Git for version control
-    - Has a `runner.sh` script, likely for deployment or running the application
-    - Has Python dependencies listed in `requirements.txt`
-
-Let me check the contents of README.md to see if there's more specific information about the project:Based on my analysis, this appears to be a Django-based project related to IELTS testing. Here's what I can tell you about the project structure and its purpose:
-1. **Project Structure**:
-    - It's a Django web application with Docker support
-    - Uses a PostgreSQL database (named ) `cdi_ielts`
-    - Has several Django apps in the directory:
-        - (handling IELTS tests) `tests`
-        - (handling user test interactions) `user_tests`
-        - (user profile management) `profiles`
-        - `bot` (likely a bot integration)
-
-`apps`
-
-2. **Main Components**:
-    - Has Docker configuration (`Dockerfile` and `docker-compose.yml`)
-    - Uses environment variables (`.env` file)
-    - Has a standard Django project structure with `manage.py`
-    - Includes static file handling (`static` directory)
-    - Configuration is in the `config` directory
-
-3. **Features**:
-    - Has an IELTS test management system
-    - Includes user test tracking functionality
-    - Has an API (titled "CDI IELTS API")
-    - Appears to have user profile management
-
-4. **Technology Stack**:
-    - Python/Django backend
-    - PostgreSQL database
-    - Docker containerization
-    - Uses virtualenv for Python package management
-    - Has dependencies listed in `requirements.txt`
-
-Would you like me to explore any specific aspect of the project in more detail? I can:
-- Look at specific files or components
-- Examine the models and their relationships
-- Check the API endpoints
-- Review the test structure
-- Or investigate any other aspect you're interested in
-
-
-## Me
-could u write full offical user friendly readme file step by step 
-
-## AI Assistant
-I'll help you create a comprehensive README.md file for the CDI IELTS project. I'll structure it in a clear and user-friendly way.
-``` markdown
-# CDI IELTS Platform
-
-A comprehensive Django-based platform for IELTS test management and practice.
-
-## 📋 Table of Contents
-- [Overview](#overview)
-- [Features](#features)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Environment Setup](#environment-setup)
-- [Running the Project](#running-the-project)
-- [Docker Setup](#docker-setup)
-- [Project Structure](#project-structure)
-- [Contributing](#contributing)
-
-## 🎯 Overview
-CDI IELTS Platform is a web-based application designed to help manage and facilitate IELTS testing. It provides features for test management, user tracking, and automated assistance through an integrated bot system.
-
-## ✨ Features
-- IELTS test management system
-- User profile management
-- Test progress tracking
-- Automated assistance bot
-- RESTful API
-- Containerized deployment support
-
-## 🔧 Prerequisites
-- Python 3.13.7
+Tech stack
+- Python 3 + Django REST Framework
 - PostgreSQL
-- Docker & Docker Compose (optional)
-- Git
+- JWT (simplejwt)
+- Docker (optional)
 
-## 🚀 Installation
+Quick start (local)
+1) Clone and enter the project
+- git clone <your_repo_url>
+- cd CDI_IELTS
 
-### Local Setup
-1. Clone the repository:
-```
-bash git clone <repository-url> cd cdi_ielts
-``` 
+2) Create virtualenv and install deps
+- python -m venv .venv
+- source .venv/bin/activate  # Windows: .venv\Scripts\activate
+- pip install -r requirements.txt
 
-2. Create and activate virtual environment:
-```
-bash python -m venv venv source venv/bin/activate # On Windows use: venv\Scripts\activate
-``` 
+3) Configure .env (see Environment variables)
 
-3. Install dependencies:
-```
-bash pip install -r requirements.txt
-``` 
+4) Migrate and run
+- python manage.py migrate
+- python manage.py runserver
 
-## ⚙️ Environment Setup
-1. Create a `.env` file in the root directory
-2. Add the following configurations:
-```
-POSTGRES_DB=cdi_ielts POSTGRES_USER=your_username POSTGRES_PASSWORD=your_password POSTGRES_HOST=localhost POSTGRES_PORT=5432
-``` 
+Open http://127.0.0.1:8000/api/docs to explore the API.
 
-## 🏃‍♂️ Running the Project
+Environment variables
+Create .env in the project root. Required keys:
 
-### Local Development
-1. Apply database migrations:
-```
-bash python manage.py migrate
-``` 
+# Django
+SECRET_KEY=your_django_secret_key
+DEBUG=True
+ALLOWED_HOSTS=127.0.0.1,localhost
+TIME_ZONE=Asia/Tashkent
 
-2. Create a superuser (optional):
-```
-bash python manage.py createsuperuser
-``` 
+# PostgreSQL (docker-compose uses service name "db")
+POSTGRES_DB=
+POSTGRES_USER=
+POSTGRES_PASSWORD=
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
 
-3. Start the development server:
-```
-bash python manage.py runserver
-``` 
+# Click (payment) configuration
+# Values below must be provided by Click.uz merchant panel
+CLICK_SERVICE_ID=11111
+CLICK_MERCHANT_ID=22222
+CLICK_MERCHANT_USER_ID=33333
+CLICK_SECRET_KEY=your_click_secret
+# Click payment page base URL, e.g. https://my.click.uz/services/pay
+CLICK_BASE_URL=https://my.click.uz/services/pay
+# Where Click should redirect the user after payment or cancel
+CLICK_RETURN_URL=https://your-frontend.example.com/payments/return
+CLICK_CANCEL_URL=https://your-frontend.example.com/payments/cancel
 
-### Using runner script:
-```
-bash ./runner.sh
-``` 
+# Optional CORS/CSRF
+CORS_ALLOW_ALL_ORIGINS=True
+CSRF_TRUSTED_ORIGINS=http://localhost:8000
 
-## 🐳 Docker Setup
-1. Build and start containers:
-```
-bash docker-compose up --build
-``` 
+Payments (Click) — Top-up flow
+This project implements a simple top-up flow using Click.
 
-2. Run migrations in Docker:
-```
-bash docker-compose exec web python manage.py migrate
-``` 
+1) Create top-up session (frontend)
+- Method: POST /api/payments/topup/
+- Auth: Bearer token (user)
+- Body: { "amount": 50000 }
+- Response: 201 Created with JSON:
+  {
+    "id": "<uuid>",
+    "status": "created",
+    "amount": "50000.00",
+    "currency": "UZS",
+    "created_at": "2025-01-01T12:00:00Z",
+    "completed_at": null,
+    "redirect_url": "https://my.click.uz/services/pay?..."
+  }
+- Frontend should redirect the user to redirect_url.
 
-## 📁 Project Structure
-```
-cdi_ielts/ ├── apps/ │ ├── tests/ # IELTS test management │ ├── user_tests/ # User test interactions │ ├── profiles/ # User profile management │ └── bot/ # Bot integration ├── config/ # Project configuration ├── static/ # Static files ├── manage.py # Django management script ├── requirements.txt # Python dependencies ├── Dockerfile # Docker configuration └── docker-compose.yml # Docker Compose configuration
-``` 
+2) User completes/cancels payment on Click page
+- Click redirects back to your frontend using the provided return/cancel URLs.
+- Frontend stores payment_id from the return URL query if needed.
 
-## 🤝 Contributing
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+3) Click server invokes webhook (backend)
+- Endpoint: POST /api/payments/click/webhook/
+- The backend verifies IP and signature and updates the payment status to pending/paid/failed/canceled.
+- No user action is required here.
+
+4) Frontend polls payment status
+- Method: GET /api/payments/status/?payment_id=<uuid>
+- Response:
+  {
+    "id": "<uuid>",
+    "student": "<student_uuid>",
+    "provider": "click",
+    "status": "paid|pending|failed|canceled|created",
+    "is_paid": true|false,
+    "amount": "50000.00",
+    "currency": "UZS",
+    "provider_invoice_id": "...",
+    "provider_txn_id": "...",
+    "created_at": "...",
+    "completed_at": "..."
+  }
+
+Notes
+- Minimal and maximal top-up amounts are controlled by settings:
+  - PAYMENTS.MIN_TOPUP (default 1000)
+  - PAYMENTS.MAX_TOPUP (default 5_000_000)
+- Webhook security:
+  - Signature is verified.
+  - Allowed IPs are restricted in settings.CLICK.ALLOWED_IPS.
+
+Running with Docker
+- docker-compose up --build
+Then open http://127.0.0.1:8000/api/docs.
+
+Project structure
+- apps/ — project apps: accounts, users, tests, user_tests, payments, profiles, speaking, teacher_checking
+- config/ — Django settings and URLs
+- bot/ — bot integration
+- static/, media/ — static/user media
+
+Useful commands
+- Run server: python manage.py runserver
+- Apply migrations: python manage.py migrate
+- Create superuser: python manage.py createsuperuser
+
+Contributing
+1) Fork the repo
+2) Create a feature branch: git checkout -b feature/awesome
+3) Commit: git commit -m "feat: add awesome thing"
+4) Push: git push origin feature/awesome
+5) Open a Pull Request

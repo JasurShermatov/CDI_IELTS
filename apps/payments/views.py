@@ -8,7 +8,6 @@ from uuid import UUID
 from django.conf import settings
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -43,36 +42,11 @@ def verify_click_request(payload: dict) -> bool:
     return calculated == provided
 
 
-def mark_payment_failed(
-    payment: Payment, webhook_payload: dict, error_code="1", error_note="Failed"
-):
-    payment.status = PaymentStatus.FAILED
-    payment.error_code = error_code
-    payment.error_note = error_note
-    payment.provider_payload = webhook_payload
-    payment.updated_at = timezone.now()
-    payment.save(
-        update_fields=[
-            "status",
-            "error_code",
-            "error_note",
-            "provider_payload",
-            "updated_at",
-        ]
-    )
-
-
-def mark_payment_paid_and_topup(payment: Payment, webhook_payload: dict):
-    sp = payment.student
-    sp.balance += payment.amount
-    sp.save(update_fields=["balance"])
-
-    payment.status = PaymentStatus.PAID
-    payment.provider_payload = webhook_payload
-    payment.completed_at = timezone.now()
-    payment.save(
-        update_fields=["status", "provider_payload", "completed_at", "updated_at"]
-    )
+# Use service-layer business logic for payment state transitions
+from .services import (
+    mark_payment_failed as svc_mark_payment_failed,
+    mark_payment_paid_and_topup as svc_mark_payment_paid_and_topup,
+)
 
 
 
@@ -103,6 +77,12 @@ def create_topup(request):
         currency="UZS",
     )
 
+    # Build redirect URL safely (encode return/cancel URLs)
+    from urllib.parse import quote_plus
+
+    return_url = f"{settings.CLICK['RETURN_URL']}?payment_id={payment.id}"
+    cancel_url = f"{settings.CLICK['CANCEL_URL']}?payment_id={payment.id}"
+
     redirect_url = (
         f"{settings.CLICK['BASE_URL']}"
         f"?merchant_id={settings.CLICK['MERCHANT_ID']}"
@@ -110,8 +90,8 @@ def create_topup(request):
         f"&service_id={settings.CLICK.get('SERVICE_ID', '')}"
         f"&transaction={payment.id}"
         f"&amount={payment.amount}"
-        f"&return_url={settings.CLICK['RETURN_URL']}?payment_id={payment.id}"
-        f"&cancel_url={settings.CLICK['CANCEL_URL']}?payment_id={payment.id}"
+        f"&return_url={quote_plus(return_url)}"
+        f"&cancel_url={quote_plus(cancel_url)}"
     )
 
     data = PaymentPublicSerializer(payment).data
@@ -193,16 +173,16 @@ def click_webhook(request):
 
         if action in {"complete", "pay"}:
             if error != "0":
-                mark_payment_failed(
+                svc_mark_payment_failed(
                     payment, payload, error_code=error, error_note=error_note
                 )
                 return Response({"status": "failed", "payment_id": str(payment.id)})
 
             try:
-                mark_payment_paid_and_topup(payment, payload)
+                svc_mark_payment_paid_and_topup(payment, payload)
             except Exception as exc:
                 log.exception("❌ Top-up failed for payment %s: %s", payment.id, exc)
-                mark_payment_failed(payment, payload)
+                svc_mark_payment_failed(payment, payload)
                 return Response(
                     {"error": "Top-up failed"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
