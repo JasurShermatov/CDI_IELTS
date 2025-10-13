@@ -50,13 +50,15 @@ class RegisterVerifySerializer(serializers.Serializer):
     user_id = serializers.UUIDField()
     code = serializers.CharField(max_length=6)
 
-    def _load_user(self, user_id: UUID) -> User:
+    @staticmethod
+    def _load_user(user_id: UUID) -> User:
         try:
             return User.objects.get(id=user_id)
         except User.DoesNotExist as exc:
             raise serializers.ValidationError("User not found.") from exc
 
-    def _load_vc_by_code(self, code: str) -> VerificationCode | None:
+    @staticmethod
+    def _load_vc_by_code(code: str) -> VerificationCode | None:
         return (
             VerificationCode.objects.alive()
             .filter(code=code, purpose=VerificationCode.Purpose.REGISTER)
@@ -143,9 +145,10 @@ class OtpIngestSerializer(serializers.Serializer):
     telegram_id = serializers.IntegerField(required=False)
     telegram_username = serializers.CharField(required=False, allow_blank=True)
     code = serializers.CharField(max_length=6)
-    purpose = serializers.ChoiceField(choices=VerificationCode.Purpose.choices)
+    purpose = serializers.ChoiceField(choices=VerificationCode.Purpose.choices) # type: ignore
 
-    def validate_code(self, v: str) -> str:
+    @staticmethod
+    def validate_code(v: str) -> str:
         if len(v) != 6 or not v.isdigit():
             raise serializers.ValidationError("Code must be 6 digits.")
         return v
@@ -158,14 +161,12 @@ class OtpIngestSerializer(serializers.Serializer):
             tuser = tuser.strip().lstrip("@").lower()
             validated_data["telegram_username"] = tuser
 
-        # aktiv bor-yo‘qligini tekshir
         exists = VerificationCode.objects.has_active(
             telegram_id=validated_data.get("telegram_id"),
             telegram_username=validated_data.get("telegram_username"),
             purpose=validated_data["purpose"],
         )
         if exists:
-            # DRF view 409 qaytarishi uchun ValidationError tashlaymiz
             raise serializers.ValidationError(
                 {"detail": "Active code exists", "expires_at": exists.expires_at},
                 code="conflict",
@@ -177,12 +178,12 @@ class OtpIngestSerializer(serializers.Serializer):
 class OtpStatusQuerySerializer(serializers.Serializer):
     telegram_id = serializers.IntegerField(required=False)
     telegram_username = serializers.CharField(required=False, allow_blank=True)
-    purpose = serializers.ChoiceField(choices=VerificationCode.Purpose.choices)
+    purpose = serializers.ChoiceField(choices=VerificationCode.Purpose.choices)  # type: ignore
 
     def validate(self, attrs: Dict[str, Any]) -> Dict[str, Any]:
         if not attrs.get("telegram_id") and not attrs.get("telegram_username"):
             raise serializers.ValidationError(
-                "telegram_id yoki telegram_username talab qilinadi."
+                "telegram_id or telegram_username is required."
             )
 
         if attrs.get("telegram_username"):

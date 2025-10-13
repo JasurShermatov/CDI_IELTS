@@ -243,7 +243,7 @@ class OtpStatusView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_classes = [OTPStatusThrottle]
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):    # noqa yoki
         telegram_id = request.query_params.get("telegram_id")
         telegram_username = request.query_params.get("telegram_username")
         purpose = request.query_params.get("purpose")

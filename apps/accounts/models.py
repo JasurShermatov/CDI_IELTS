@@ -13,7 +13,8 @@ from django.utils import timezone
 class VerificationCodeQuerySet(models.QuerySet):
     def alive(self) -> "VerificationCodeQuerySet":
         now = timezone.now()
-        return self.filter(consumed=False, expires_at__gt=now)
+        return self.filter(consumed=False, expires_at__gt=now)   # type: ignore
+
 
     def for_target(
         self,
@@ -62,7 +63,7 @@ class VerificationCodeManager(models.Manager.from_queryset(VerificationCodeQuery
     ) -> "VerificationCode":
 
         expires = timezone.now() + timedelta(minutes=ttl_minutes)
-        return self.create(
+        return self.create( # type: ignore
             telegram_id=telegram_id,
             telegram_username=(telegram_username or None),
             code=code,
@@ -97,13 +98,15 @@ class VerificationCode(models.Model):
     )
 
     code = models.CharField(max_length=6)
-    purpose = models.CharField(max_length=10, choices=Purpose.choices)
+    purpose = models.CharField(max_length=10, choices=Purpose.choices) # type: ignore
 
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     expires_at = models.DateTimeField(db_index=True)
     consumed = models.BooleanField(default=False, db_index=True)
 
-    objects: VerificationCodeManager = VerificationCodeManager()
+    from typing import ClassVar
+
+    objects: ClassVar[VerificationCodeManager] = VerificationCodeManager()
 
     class Meta:
         db_table = "verification_codes"
