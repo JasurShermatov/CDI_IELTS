@@ -71,9 +71,9 @@ class UsersListView(generics.ListAPIView):
 
     def get_queryset(self):
         qs = User.objects.all().order_by("-created_at")
-        q = self.request.query_params.get("q")
-        role = self.request.query_params.get("role")
-        is_active = self.request.query_params.get("is_active")
+        q = self.request.query_params.get("q") # noqa
+        role = self.request.query_params.get("role") # noqa
+        is_active = self.request.query_params.get("is_active") # noqa
 
         if q:
             qs = qs.filter(

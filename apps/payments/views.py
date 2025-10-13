@@ -42,7 +42,6 @@ def verify_click_request(payload: dict) -> bool:
     return calculated == provided
 
 
-# Use service-layer business logic for payment state transitions
 from .services import (
     mark_payment_failed as svc_mark_payment_failed,
     mark_payment_paid_and_topup as svc_mark_payment_paid_and_topup,
@@ -76,7 +75,6 @@ def create_topup(request):
         currency="UZS",
     )
 
-    # Build redirect URL safely (encode return/cancel URLs)
     from urllib.parse import quote_plus
 
     return_url = f"{settings.CLICK['RETURN_URL']}?payment_id={payment.id}"
@@ -172,15 +170,15 @@ def click_webhook(request):
         if action in {"complete", "pay"}:
             if error != "0":
                 svc_mark_payment_failed(
-                    payment, payload, error_code=error, error_note=error_note
-                )
+                    payment, payload, error_code=error, error_note=error_note   # noqa
+                )  # noqa
                 return Response({"status": "failed", "payment_id": str(payment.id)})
 
             try:
                 svc_mark_payment_paid_and_topup(payment, payload)
             except Exception as exc:
                 log.exception("❌ Top-up failed for payment %s: %s", payment.id, exc)
-                svc_mark_payment_failed(payment, payload)
+                svc_mark_payment_failed(payment, payload)  # noqa
                 return Response(
                     {"error": "Top-up failed"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,

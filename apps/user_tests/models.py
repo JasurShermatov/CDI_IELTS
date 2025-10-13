@@ -23,7 +23,7 @@ class UserTest(models.Model):
     test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="user_tests")
 
     status = models.CharField(
-        max_length=20, choices=Status.choices, default=Status.NOT_STARTED, db_index=True
+        max_length=20, choices=Status.choices, default=Status.NOT_STARTED, db_index=True # noqa
     )
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)

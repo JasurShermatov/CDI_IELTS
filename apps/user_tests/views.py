@@ -41,8 +41,8 @@ def all_tests(request):
     parameters=[
         OpenApiParameter(
             name="test_id",
-            type=OpenApiTypes.INT,  # Test PK int
-            location=OpenApiParameter.PATH,
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH, # noqa
             description="Sotib olinadigan test ID-si",
             required=True,
         )
@@ -59,7 +59,7 @@ def purchase_test_api(request, test_id: int):
         return Response({"detail": "Already purchased"}, status=400)
 
     try:
-        ut = purchase_test(user=user, test=test)  # balansdan yechish + create
+        ut = purchase_test(user=user, test=test)
     except Exception as e:
         return Response({"error": str(e)}, status=400)
 

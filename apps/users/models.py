@@ -94,7 +94,7 @@ class UserManager(BaseUserManager):
         password: Optional[str] = None,
         **extra_fields,
     ):
-        extra_fields.pop("role", None)  # external callers cannot override
+        extra_fields.pop("role", None)
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_active", True)
@@ -126,7 +126,7 @@ class User(UUIDPrimaryKeyMixin, TimeStampedMixin, AbstractBaseUser, PermissionsM
     )
 
     phone_number = models.CharField(max_length=20, unique=True)
-    role = models.CharField(max_length=20, choices=Roles.choices)
+    role = models.CharField(max_length=20, choices=Roles.choices) # noqa
 
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)

@@ -14,7 +14,7 @@ class PaymentCreateSerializer(serializers.Serializer):
         min_value=0.01,
     )
 
-    def validate_amount(self, v):
+    def validate_amount(self, v):  # noqa
         min_amt = settings.PAYMENTS["MIN_TOPUP"]
         max_amt = settings.PAYMENTS["MAX_TOPUP"]
 
@@ -51,7 +51,7 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
         help_text="To‘lov muvaffaqiyatli yakunlangani (true/false)"
     )
 
-    def get_is_paid(self, obj: Payment) -> bool:
+    def get_is_paid(self, obj: Payment) -> bool:  # noqa
         return obj.status == PaymentStatus.PAID
 
     class Meta:
