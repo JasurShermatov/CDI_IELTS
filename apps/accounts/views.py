@@ -3,11 +3,12 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
+from drf_spectacular.utils import OpenApiParameter
+from drf_spectacular.utils import extend_schema, OpenApiResponse
 from rest_framework import generics, status, throttling, permissions, serializers
 from rest_framework.response import Response
 
-from .models import VerificationCode
+from apps.accounts.models import VerificationCode
 from .serializers import (
     RegisterStartSerializer,
     RegisterVerifySerializer,

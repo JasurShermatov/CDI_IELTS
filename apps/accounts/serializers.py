@@ -1,15 +1,15 @@
 # apps/accounts/serializers.py
 from __future__ import annotations
 from __future__ import annotations
-
+from django.utils import timezone
 from typing import Any, Dict
 from uuid import UUID
 
 from django.db import transaction
 from rest_framework import serializers
 
+from apps.accounts.models import VerificationCode
 from apps.users.models import User
-from .models import VerificationCode
 
 
 class DjangoValidationError:
@@ -101,35 +101,41 @@ class RegisterVerifySerializer(serializers.Serializer):
         return user
 
 
+
 class LoginVerifySerializer(serializers.Serializer):
     code = serializers.CharField(max_length=6)
-    telegram_id = serializers.IntegerField()
 
-    def validate(self, attrs: Dict[str, Any]) -> Dict[str, Any]:
-        t_id = attrs["telegram_id"]
+    def validate(self, attrs):
         code = attrs["code"]
 
-        vc = VerificationCode.objects.latest_alive_for(
-            telegram_id=t_id,
-            telegram_username=None,
-            purpose=VerificationCode.Purpose.LOGIN,
+        vc = (
+            VerificationCode.objects.filter(
+                purpose=VerificationCode.Purpose.LOGIN,
+                consumed=False,
+                expires_at__gt=timezone.now(),
+                code=code,
+            )
+            .order_by("-created_at")
+            .first()
         )
+
         if not vc or not vc.is_valid(code):
             raise serializers.ValidationError("Invalid or expired code.")
 
-        user = User.objects.filter(telegram_id=t_id).first()
+        user = User.objects.filter(telegram_id=vc.telegram_id).first()
         if not user:
-            raise serializers.ValidationError("User is not linked to this Telegram ID.")
+            raise serializers.ValidationError("User not linked to this Telegram ID.")
 
         attrs["user"] = user
         attrs["vc"] = vc
         return attrs
 
     @transaction.atomic
-    def create(self, validated_data: Dict[str, Any]) -> User:
+    def create(self, validated_data):
         vc: VerificationCode = validated_data["vc"]
         vc.consume()
         return validated_data["user"]
+
 
 
 class OtpIngestSerializer(serializers.Serializer):

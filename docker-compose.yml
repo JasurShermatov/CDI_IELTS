@@ -1,5 +1,6 @@
 services:
   web:
+    container_name: cdi_ielts-web
     build: .
     volumes:
       - .:/app
@@ -11,8 +12,11 @@ services:
     env_file:
       - .env
     restart: on-failure
+    networks:
+      - cdi_network
 
   db:
+    container_name: cdi_ielts-db
     image: postgres:15
     restart: on-failure
     environment:
@@ -23,8 +27,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    networks:
+      - cdi_network
 
   bot:
+    container_name: cdi_ielts-bot
     build:
       context: ./bot
       dockerfile: Dockerfile
@@ -34,6 +41,12 @@ services:
     depends_on:
       web:
         condition: service_started
+    networks:
+      - cdi_network
 
 volumes:
   postgres_data:
+
+networks:
+  cdi_network:
+    driver: bridge
