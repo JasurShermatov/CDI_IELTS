@@ -40,7 +40,7 @@ def create_speaking_request(
     )
     try:
         notify_telegram_admin_sync(text)
-    except Exception: # noqa
+    except Exception:  # noqa
         pass
 
     return sr

@@ -103,7 +103,6 @@ class RegisterVerifySerializer(serializers.Serializer):
         return user
 
 
-
 class LoginVerifySerializer(serializers.Serializer):
     code = serializers.CharField(max_length=6)
 
@@ -139,13 +138,12 @@ class LoginVerifySerializer(serializers.Serializer):
         return validated_data["user"]
 
 
-
 class OtpIngestSerializer(serializers.Serializer):
 
     telegram_id = serializers.IntegerField(required=False)
     telegram_username = serializers.CharField(required=False, allow_blank=True)
     code = serializers.CharField(max_length=6)
-    purpose = serializers.ChoiceField(choices=VerificationCode.Purpose.choices) # type: ignore
+    purpose = serializers.ChoiceField(choices=VerificationCode.Purpose.choices)  # type: ignore
 
     @staticmethod
     def validate_code(v: str) -> str:

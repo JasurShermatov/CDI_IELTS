@@ -170,7 +170,7 @@ def click_webhook(request):
         if action in {"complete", "pay"}:
             if error != "0":
                 svc_mark_payment_failed(
-                    payment, payload, error_code=error, error_note=error_note   # noqa
+                    payment, payload, error_code=error, error_note=error_note  # noqa
                 )  # noqa
                 return Response({"status": "failed", "payment_id": str(payment.id)})
 

@@ -26,7 +26,9 @@ class Payment(models.Model):
         StudentProfile, on_delete=models.CASCADE, related_name="payments"
     )
     provider = models.CharField(
-        max_length=20, choices=PaymentProvider.choices, default=PaymentProvider.CLICK  # noqa
+        max_length=20,
+        choices=PaymentProvider.choices,
+        default=PaymentProvider.CLICK,  # noqa
     )
     status = models.CharField(
         max_length=20,

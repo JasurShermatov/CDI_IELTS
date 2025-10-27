@@ -42,7 +42,7 @@ def all_tests(request):
         OpenApiParameter(
             name="test_id",
             type=OpenApiTypes.INT,
-            location=OpenApiParameter.PATH, # noqa
+            location=OpenApiParameter.PATH,  # noqa
             description="Sotib olinadigan test ID-si",
             required=True,
         )

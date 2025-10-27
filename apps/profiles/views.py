@@ -63,7 +63,7 @@ class StudentMeView(generics.RetrieveAPIView):
     serializer_class = StudentProfileSerializer
 
     def get_object(self) -> StudentProfile:
-        return get_object_or_404( # noqa
+        return get_object_or_404(  # noqa
             StudentProfile.objects.select_related("user"),
             user=self.request.user,
         )
@@ -280,7 +280,7 @@ def student_dashboard(request):
 def teacher_dashboard(request):
 
     user = request.user
-    tp = get_object_or_404(
+    tp = get_object_or_404(  # type: ignore[var-annotated]
         TeacherProfile.objects.select_related("user"),
         user=user,
     )

@@ -126,7 +126,7 @@ class User(UUIDPrimaryKeyMixin, TimeStampedMixin, AbstractBaseUser, PermissionsM
     )
 
     phone_number = models.CharField(max_length=20, unique=True)
-    role = models.CharField(max_length=20, choices=Roles.choices) # noqa
+    role = models.CharField(max_length=20, choices=Roles.choices)  # noqa
 
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
