@@ -17,13 +17,13 @@ from apps.tests.serializers import (
 
 LISTENING_PREFETCH = Prefetch(
     "listening__sections",
-    queryset=ListeningSection.objects.all()
+    queryset=ListeningSection.objects.all()  # noqa
     .only("id", "name", "mp3_file")
     .prefetch_related("questions_set"),
 )
 READING_PREFETCH = Prefetch(
     "reading__passages",
-    queryset=ReadingPassage.objects.all()
+    queryset=ReadingPassage.objects.all()  # noqa
     .only("id", "name")
     .prefetch_related("questions_set"),
 )
@@ -58,7 +58,7 @@ class TestViewSet(
     lookup_value_regex = r"\d+"
 
     def get_queryset(self):
-        base = Test.objects.all()
+        base = Test.objects.all()  # noqa
         if getattr(self, "action", None) == "list":
             return base.only("id", "title", "price", "created_at")
         return base.select_related(
@@ -113,7 +113,7 @@ class QuestionSetViewSet(
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        base = QuestionSet.objects.all()
+        base = QuestionSet.objects.all() # noqa
         if getattr(self, "action", None) == "list":
             return base.annotate(questions_count=Count("questions")).only("id", "name")
         return base.prefetch_related("questions")
