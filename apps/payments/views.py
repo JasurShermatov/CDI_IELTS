@@ -37,7 +37,7 @@ def verify_click_request(payload: dict) -> bool:
         + str(payload.get("sign_time", ""))
         + secret
     )
-    calculated = hashlib.sha256(sign_string.encode("utf-8")).hexdigest()
+    calculated = hashlib.sha256(sign_string.encode("utf-8")).hexdigest()  # noqa
     provided = str(payload.get("sign_string", ""))
     return calculated == provided
 
@@ -67,7 +67,7 @@ def create_topup(request):
     sp = get_object_or_404(StudentProfile, user=request.user)
     amount = ser.validated_data["amount"]
 
-    payment = Payment.objects.create(
+    payment = Payment.objects.create(  # noqa
         student=sp,
         provider=PaymentProvider.CLICK,
         status=PaymentStatus.CREATED,
@@ -106,8 +106,33 @@ def create_topup(request):
         "Vazifasi: Click’dan kelgan `prepare`, `complete`, `cancel` kabi signalni qabul qilish, "
         "imzo (signature) va IP manzilini tekshirish, va to‘lov statusini yangilash."
     ),
-    request=OpenApiTypes.OBJECT,
-    responses={200: OpenApiTypes.OBJECT},
+    request={
+        "application/json": {
+            "example": {
+                "click_trans_id": "123456789",
+                "service_id": "1234",
+                "merchant_trans_id": "a9b6f8b2-62d5-4c47-98d7-6a3c2f8b8f1c",
+                "amount": "50000.00",
+                "action": "complete",
+                "error": "0",
+                "error_note": "",
+                "sign_time": "2025-11-06 10:20:00",
+                "sign_string": "9c71a7fbe884e54c4f8b93b1d94ffb6c9c9b02f0a27b0fdf6b7a56b1a3f27d25",
+            }
+        }
+    },
+    responses={
+        200: {
+            "application/json": {
+                "example": {
+                    "status": "paid",
+                    "payment_id": "a9b6f8b2-62d5-4c47-98d7-6a3c2f8b8f1c",
+                }
+            }
+        },
+        400: {"example": {"error": "Invalid signature"}},
+        403: {"example": {"error": "IP not allowed"}},
+    },
 )
 @csrf_exempt
 @api_view(["POST"])
@@ -140,7 +165,9 @@ def click_webhook(request):
     error_note = payload.get("error_note", "")
 
     with transaction.atomic():
-        payment = get_object_or_404(Payment.objects.select_for_update(), id=payment_id)
+        payment = get_object_or_404(
+            Payment.objects.select_for_update(), id=payment_id # noqa
+        )  # noqa
 
         if action in {"prepare", "check"}:
             if payment.status in {

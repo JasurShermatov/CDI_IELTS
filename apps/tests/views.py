@@ -113,7 +113,7 @@ class QuestionSetViewSet(
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        base = QuestionSet.objects.all() # noqa
+        base = QuestionSet.objects.all()  # noqa
         if getattr(self, "action", None) == "list":
             return base.annotate(questions_count=Count("questions")).only("id", "name")
         return base.prefetch_related("questions")
