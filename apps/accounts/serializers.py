@@ -54,7 +54,7 @@ class RegisterVerifySerializer(serializers.Serializer):
     def _load_user(user_id: UUID) -> User:
         try:
             return User.objects.get(id=user_id)
-        except User.DoesNotExist as exc:
+        except User.DoesNotExist as exc: # noqa
             raise serializers.ValidationError("User not found.") from exc
 
     @staticmethod
