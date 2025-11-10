@@ -166,7 +166,7 @@ def click_webhook(request):
 
     with transaction.atomic():
         payment = get_object_or_404(
-            Payment.objects.select_for_update(), id=payment_id # noqa
+            Payment.objects.select_for_update(), id=payment_id  # noqa
         )  # noqa
 
         if action in {"prepare", "check"}:
