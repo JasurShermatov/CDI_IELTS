@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://web:8000")
+BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://web:8700")
 INGEST_TOKEN = os.getenv("BOT_INGEST_TOKEN")
 
 

@@ -9,7 +9,7 @@ echo "👉 Running Black formatter..."
 black .
 
 POSTGRES_HOST=${POSTGRES_HOST:-db}
-POSTGRES_PORT=${POSTGRES_PORT:-5432}
+POSTGRES_PORT=${POSTGRES_PORT:-5436}
 
 
 echo "⏳  Waiting for PostgreSQL at ${POSTGRES_HOST}:${POSTGRES_PORT} …"

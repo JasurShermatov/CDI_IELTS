@@ -72,7 +72,7 @@ async def _handle_purpose(msg: types.Message, purpose: str) -> None:
             )
         else:
             await msg.answer(
-                f"ℹ️ Bu tur uchun aktiv kod bor.\nQolgan vaqt: {remaining} soniya."
+                f"ℹ️ Allaqachon active kod bor.\nQolgan vaqt: {remaining} soniya."
             )
         return
 

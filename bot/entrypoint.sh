@@ -9,4 +9,5 @@ if [ -f ".env" ]; then
   set +o allexport
 fi
 
+
 exec python -m app.main
