@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth';
-import { api } from '@/lib/api';
+import api from '@/lib/api';
 import { SpeakingRequest } from '@/lib/types';
+import { getMockSpeakingRequests, getMockStudentDashboard } from '@/lib/mockData';
+import { isMockEnabled } from '@/lib/mockMode';
 import { useToast } from '@/components/Toast';
-import { Skeleton } from '@/components/Skeleton';
-import { EmptyState } from '@/components/EmptyState';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { Check, Calendar, Phone, Send, Info, User as UserIcon, MessageSquare, Clock, AlertCircle } from 'lucide-react';
+import { SkeletonDashboard } from '@/components/Skeleton';
+import EmptyState from '@/components/EmptyState';
+import ConfirmDialog from '@/components/ConfirmDialog';
+import { Check, Calendar, Phone, Send, Info, User as UserIcon, MessageSquare, Clock } from 'lucide-react';
 
 const SPEAKING_FEE = 50000;
 
@@ -21,16 +23,18 @@ const CHECKLIST_ITEMS = [
 ];
 
 export default function SpeakingPage() {
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const toast = useToast();
   const [requests, setRequests] = useState<SpeakingRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [isMock, setIsMock] = useState(false);
+  const [profileName, setProfileName] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
-    phone_number: user?.phone_number || '',
+    phone_number: '',
     payment_date: new Date().toISOString().slice(0, 16),
   });
 
@@ -39,12 +43,27 @@ export default function SpeakingPage() {
   );
 
   const fetchRequests = useCallback(async (signal?: AbortSignal) => {
+    if (isMockEnabled()) {
+      const mock = getMockStudentDashboard();
+      setProfileName(mock.profile.user.fullname);
+      setFormData(prev => ({ ...prev, phone_number: mock.profile.user.phone_number }));
+      setRequests(getMockSpeakingRequests());
+      setIsMock(true);
+      setIsLoading(false);
+      return;
+    }
     try {
-      const response = await api.get('/speaking/request/me/', { signal });
-      setRequests(response.data);
+      const [speakingRes, profileRes] = await Promise.all([
+        api.get('/speaking/request/me/', { signal }),
+        api.get('/profiles/student/me/', { signal }),
+      ]);
+      setRequests(speakingRes.data);
+      const profile = profileRes.data;
+      setProfileName(profile?.user?.fullname || '');
+      setFormData(prev => ({ ...prev, phone_number: profile?.user?.phone_number || prev.phone_number }));
     } catch (error: any) {
       if (error.name !== 'CanceledError') {
-        process.env.NODE_ENV === 'development' && console.error('Failed to fetch requests:', error);
+        process.env.NODE_ENV === 'development' && console.error('Failed to fetch:', error);
       }
     } finally {
       setIsLoading(false);
@@ -52,10 +71,11 @@ export default function SpeakingPage() {
   }, []);
 
   useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
     const controller = new AbortController();
     fetchRequests(controller.signal);
     return () => controller.abort();
-  }, [fetchRequests]);
+  }, [fetchRequests, authLoading, isAuthenticated]);
 
   const handleChecklistToggle = (id: string) => {
     setChecklist((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -65,7 +85,7 @@ export default function SpeakingPage() {
 
   const handleSubmit = async () => {
     if (!isChecklistComplete) {
-      toast('Please complete all checklist items.', 'warning');
+      toast.warning('Please complete all checklist items.');
       return;
     }
 
@@ -76,7 +96,7 @@ export default function SpeakingPage() {
         payment_date: new Date(formData.payment_date).toISOString(),
         checklist,
       });
-      toast('Speaking request submitted successfully!', 'success');
+      toast.success('Speaking request submitted successfully!');
 
       // Reset form
       setChecklist(CHECKLIST_ITEMS.reduce((acc, item) => ({ ...acc, [item.id]: false }), {}));
@@ -86,7 +106,7 @@ export default function SpeakingPage() {
       fetchRequests();
     } catch (error: any) {
       const message = error.response?.data?.error || 'Failed to submit request. Please try again.';
-      toast(message, 'error');
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -105,13 +125,18 @@ export default function SpeakingPage() {
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-8 animate-fade-in">
-        <Skeleton.Dashboard />
+        <SkeletonDashboard />
       </div>
     );
   }
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-12 animate-fade-in">
+      {isMock && (
+        <div className="inline-flex items-center gap-2 rounded-full bg-yellow-100 text-yellow-800 px-4 py-1 text-sm font-semibold">
+          ⚡ Demo data
+        </div>
+      )}
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Speaking Practice</h1>
@@ -169,7 +194,7 @@ export default function SpeakingPage() {
                   <input
                     type="text"
                     disabled
-                    value={user?.fullname || ''}
+                    value={profileName}
                     className="w-full pl-10 h-10 bg-gray-50 rounded-lg border text-sm cursor-not-allowed"
                   />
                 </div>
@@ -275,7 +300,7 @@ export default function SpeakingPage() {
           <EmptyState
             title="No speaking requests yet"
             description="Submit your first request above to get started."
-            icon={MessageSquare}
+            icon="💬"
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -309,13 +334,14 @@ export default function SpeakingPage() {
 
       {/* Confirmation Dialog */}
       <ConfirmDialog
-        isOpen={showConfirm}
-        onClose={() => setShowConfirm(false)}
+        open={showConfirm}
+        onCancel={() => setShowConfirm(false)}
         onConfirm={handleSubmit}
         title="Confirm Speaking Request"
-        message={`Do you want to submit a speaking request? ${SPEAKING_FEE.toLocaleString()} UZS will be deducted from your balance.`}
-        confirmText="Yes, Submit"
-        type="warning"
+        description={`Do you want to submit a speaking request? ${SPEAKING_FEE.toLocaleString()} UZS will be deducted from your balance.`}
+        confirmLabel="Yes, Submit"
+        variant="primary"
+        loading={isSubmitting}
       />
     </div>
   );

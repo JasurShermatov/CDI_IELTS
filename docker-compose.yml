@@ -58,6 +58,7 @@ services:
       dockerfile: Dockerfile
       args:
         - NEXT_PUBLIC_API_URL=http://localhost:8700/api
+        - NEXT_PUBLIC_USE_MOCKS=true
     restart: unless-stopped
     ports:
       - "3000:3000"

@@ -196,11 +196,27 @@ export function getMockResults(): TestResult[] {
 ───────────────────────────────────────── */
 export function getMockSpeakingRequests(): SpeakingRequest[] {
   faker.seed(606);
-  return [
-    { id: faker.string.uuid(), status: 'scheduled', requested_at: recentIso(15), scheduled_at: recentIso(5) },
-    { id: faker.string.uuid(), status: 'created',   requested_at: recentIso(3)  },
-    { id: faker.string.uuid(), status: 'completed', requested_at: recentIso(30), scheduled_at: recentIso(20) },
-  ];
+  const statuses: SpeakingRequest['status'][] = ['pending', 'connected', 'completed', 'cancelled', 'pending'];
+  return statuses.map((status, i) => ({
+    id: faker.string.uuid(),
+    full_name: faker.person.fullName(),
+    telegram_username: faker.internet.username(),
+    phone_number: '+99890' + faker.string.numeric(7),
+    payment_date: recentIso(10 + i),
+    checklist: {
+      recording_ready: true,
+      internet_stable: true,
+      quiet_environment: true,
+      id_ready: true,
+      punctuality: true,
+    },
+    status,
+    fee_amount: '50000',
+    currency: 'UZS',
+    note: '',
+    created_at: recentIso(20 - i),
+    updated_at: recentIso(5 - i),
+  }));
 }
 
 /* ─────────────────────────────────────────
