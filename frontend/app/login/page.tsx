@@ -67,7 +67,7 @@ export default function LoginPage() {
           <div className="bg-blue-50 border border-blue-200 text-blue-800 px-5 py-4 rounded-lg mb-6">
             <h3 className="font-bold text-base mb-2">📱 How to login:</h3>
             <ol className="list-decimal list-inside space-y-1 text-sm">
-              <li>Open our <strong>Telegram bot</strong></li>
+              <li>Open our <a href="https://t.me/impulse_cdi_bot" target="_blank" rel="noopener noreferrer" className="font-bold underline text-blue-600 hover:text-blue-800">online_mock</a></li>
               <li>Send <code className="bg-blue-100 px-1.5 py-0.5 rounded text-xs font-mono">/login</code> command</li>
               <li>You will receive a <strong>6-digit code</strong></li>
               <li>Enter the code below</li>
