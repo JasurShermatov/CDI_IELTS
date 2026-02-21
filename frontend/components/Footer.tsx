@@ -58,10 +58,11 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-gray-700 mt-8 pt-6 text-center text-sm text-gray-500">
-          © {new Date().getFullYear()} CDI IELTS. All rights reserved.
+          <span suppressHydrationWarning>
+            © {new Date().getFullYear()} CDI IELTS. All rights reserved.
+          </span>
         </div>
       </div>
     </footer>
   );
 }
-

@@ -1,4 +1,6 @@
 #  apps/speaking/views.py
+import logging
+
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions
 from rest_framework.decorators import api_view, permission_classes
@@ -9,6 +11,8 @@ from apps.profiles.models import StudentProfile
 from .serializers import SpeakingRequestCreateSerializer, SpeakingRequestSerializer
 from .services import create_speaking_request
 from .models import SpeakingRequest
+
+log = logging.getLogger(__name__)
 
 
 @extend_schema(
@@ -27,7 +31,13 @@ def request_speaking(request):
     sp = get_object_or_404(StudentProfile, user=request.user)
 
     try:
-        sr = create_speaking_request(student=sp, note="")
+        sr = create_speaking_request(
+            student=sp,
+            phone_number=ser.validated_data["phone_number"],
+            payment_date=ser.validated_data["payment_date"],
+            checklist=ser.validated_data.get("checklist", {}),
+            note="",
+        )
     except ValueError as e:
         return Response({"error": str(e)}, status=400)
 

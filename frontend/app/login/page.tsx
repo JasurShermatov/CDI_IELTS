@@ -1,15 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth';
+import { useToast } from '@/components/Toast';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading, login } = useAuth();
+  const toast = useToast();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      router.replace('/dashboard');
+    }
+  }, [authLoading, isAuthenticated, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,9 +30,8 @@ export default function LoginPage() {
     try {
       const response = await api.post('/accounts/login/verify/', { code });
 
-      localStorage.setItem('access_token', response.data.access);
-      localStorage.setItem('refresh_token', response.data.refresh);
-      localStorage.setItem('user_role', response.data.role);
+      login(response.data.access, response.data.refresh, response.data.role);
+      toast.success('Login successful!');
 
       if (response.data.role === 'teacher') {
         router.push('/teacher/dashboard');
@@ -44,9 +54,11 @@ export default function LoginPage() {
     }
   };
 
+  if (authLoading) return null;
+
   return (
     <div className="container mx-auto px-4 py-16">
-      <div className="max-w-md mx-auto">
+      <div className="max-w-md mx-auto animate-fade-in">
         <div className="card">
           <h1 className="text-3xl font-bold text-[var(--primary)] mb-6 text-center">
             Login
@@ -63,23 +75,26 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm" role="alert">
               {error}
             </div>
           )}
 
           <form onSubmit={handleLogin}>
             <div className="mb-6">
-              <label className="block text-gray-700 font-semibold mb-2">
+              <label htmlFor="code-input" className="block text-gray-700 font-semibold mb-2">
                 Verification Code
               </label>
               <input
+                id="code-input"
                 type="text"
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="000000"
                 maxLength={6}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl tracking-[0.5em] font-mono focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-light)]"
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl tracking-[0.5em] font-mono"
                 required
               />
               <p className="text-xs text-gray-500 mt-2 text-center">
@@ -97,7 +112,7 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <Link href="/register" className="text-[var(--primary)] hover:underline font-medium">
+            <Link href="/register" className="text-[var(--primary)] hover:underline font-medium text-sm">
               Don&apos;t have an account? Register
             </Link>
           </div>

@@ -1,13 +1,25 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'CDI IELTS — Master Your IELTS Score',
+  description:
+    'Comprehensive IELTS practice platform with full-length tests, expert writing feedback, and live speaking sessions. Start preparing today.',
+};
 
 export default function Home() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-red-600 via-red-700 to-red-800 text-white">
-        <div className="container mx-auto px-4 py-20 md:py-28">
+      <section className="bg-gradient-to-br from-red-600 via-red-700 to-red-800 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTM2IDE4YzMuMzE0IDAgNi0yLjY4NiA2LTZzLTIuNjg2LTYtNi02LTYgMi42ODYtNiA2IDIuNjg2IDYgNiA2em0wIDJjLTQuNDE4IDAtOC0zLjU4Mi04LThzMy41ODItOCA4LTggOCAzLjU4MiA4IDgtMy41ODIgOC04IDh6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-50" />
+        <div className="container mx-auto px-4 py-20 md:py-28 relative">
           <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-1.5 text-sm font-medium mb-6">
+              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+              Trusted by 500+ IELTS students
+            </div>
+            <h1 className="text-4xl md:text-6xl font-extrabold mb-6 leading-tight tracking-tight">
               Master Your IELTS with <span className="text-yellow-300">CDI</span>
             </h1>
             <p className="text-lg md:text-xl text-red-100 mb-10 leading-relaxed">
@@ -17,13 +29,13 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/register"
-                className="bg-white text-red-700 font-bold py-4 px-10 rounded-xl text-lg hover:bg-gray-100 transition-colors shadow-lg"
+                className="bg-white text-red-700 font-bold py-4 px-10 rounded-xl text-lg hover:bg-gray-100 transition-all shadow-lg hover:shadow-xl active:scale-[0.97]"
               >
                 Get Started Free
               </Link>
               <Link
                 href="/tests"
-                className="border-2 border-white text-white font-bold py-4 px-10 rounded-xl text-lg hover:bg-white/10 transition-colors"
+                className="border-2 border-white text-white font-bold py-4 px-10 rounded-xl text-lg hover:bg-white/10 transition-all"
               >
                 Browse Tests
               </Link>
@@ -42,35 +54,36 @@ export default function Home() {
         </p>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <div className="card text-center hover:shadow-lg transition-shadow">
-            <div className="text-5xl mb-5">📚</div>
-            <h3 className="text-xl font-bold mb-3 text-gray-900">
-              Practice Tests
-            </h3>
-            <p className="text-gray-600 leading-relaxed">
-              Full-length IELTS practice tests with listening, reading, and writing sections
-            </p>
-          </div>
-
-          <div className="card text-center hover:shadow-lg transition-shadow">
-            <div className="text-5xl mb-5">🎯</div>
-            <h3 className="text-xl font-bold mb-3 text-gray-900">
-              Expert Checking
-            </h3>
-            <p className="text-gray-600 leading-relaxed">
-              Get your writing tasks checked and scored by experienced IELTS teachers
-            </p>
-          </div>
-
-          <div className="card text-center hover:shadow-lg transition-shadow">
-            <div className="text-5xl mb-5">🗣️</div>
-            <h3 className="text-xl font-bold mb-3 text-gray-900">
-              Speaking Practice
-            </h3>
-            <p className="text-gray-600 leading-relaxed">
-              Schedule one-on-one speaking sessions with qualified IELTS instructors
-            </p>
-          </div>
+          {[
+            {
+              icon: '📚',
+              title: 'Practice Tests',
+              desc: 'Full-length IELTS practice tests with listening, reading, and writing sections',
+            },
+            {
+              icon: '🎯',
+              title: 'Expert Checking',
+              desc: 'Get your writing tasks checked and scored by experienced IELTS teachers',
+            },
+            {
+              icon: '🗣️',
+              title: 'Speaking Practice',
+              desc: 'Schedule one-on-one speaking sessions with qualified IELTS instructors',
+            },
+          ].map((feature) => (
+            <div
+              key={feature.title}
+              className="card-interactive text-center group"
+            >
+              <div className="text-5xl mb-5 group-hover:scale-110 transition-transform">
+                {feature.icon}
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-gray-900">
+                {feature.title}
+              </h3>
+              <p className="text-gray-600 leading-relaxed">{feature.desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 

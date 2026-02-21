@@ -1,10 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
 import { getMockTeacherSubmissions } from '@/lib/mockData';
 import { isMockEnabled } from '@/lib/mockMode';
+import { useAuth } from '@/lib/auth';
+import { useToast } from '@/components/Toast';
+import { SkeletonTable } from '@/components/Skeleton';
+import EmptyState from '@/components/EmptyState';
+import GradeModal from '@/components/GradeModal';
 
 interface WritingSubmission {
   id: string;
@@ -18,23 +22,25 @@ interface WritingSubmission {
   checked_at?: string;
 }
 
+type Tab = 'all' | 'checking' | 'checked';
+
 export default function TeacherCheckingPage() {
-  const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading, role } = useAuth();
+  const toast = useToast();
   const [allSubmissions, setAllSubmissions] = useState<WritingSubmission[]>([]);
   const [myChecking, setMyChecking] = useState<WritingSubmission[]>([]);
   const [myChecked, setMyChecked] = useState<WritingSubmission[]>([]);
-  const [activeTab, setActiveTab] = useState<'all' | 'checking' | 'checked'>('all');
+  const [activeTab, setActiveTab] = useState<Tab>('all');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [isMock, setIsMock] = useState(false);
 
-  useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    const role = localStorage.getItem('user_role');
+  // Grade modal state
+  const [gradeTarget, setGradeTarget] = useState<WritingSubmission | null>(null);
+  const [grading, setGrading] = useState(false);
 
-    if (!token || role !== 'teacher') {
-      router.push('/login');
-      return;
-    }
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || role !== 'teacher') return;
 
     if (isMockEnabled()) {
       const mock = getMockTeacherSubmissions();
@@ -47,7 +53,7 @@ export default function TeacherCheckingPage() {
     }
 
     fetchSubmissions();
-  }, [router]);
+  }, [authLoading, isAuthenticated, role]);
 
   const fetchSubmissions = async () => {
     try {
@@ -57,100 +63,69 @@ export default function TeacherCheckingPage() {
         api.get('/teacher-checking/checked/'),
       ]);
 
-      if (
-        Array.isArray(allRes.data) &&
-        Array.isArray(checkingRes.data) &&
-        Array.isArray(checkedRes.data) &&
-        allRes.data.length === 0 &&
-        checkingRes.data.length === 0 &&
-        checkedRes.data.length === 0
-      ) {
-        const mock = getMockTeacherSubmissions();
-        setAllSubmissions(mock.all);
-        setMyChecking(mock.checking);
-        setMyChecked(mock.checked);
-        setIsMock(true);
-        return;
-      }
-
-      setAllSubmissions(allRes.data);
-      setMyChecking(checkingRes.data);
-      setMyChecked(checkedRes.data);
-    } catch (error) {
-      console.error('Failed to fetch submissions:', error);
-      const mock = getMockTeacherSubmissions();
-      setAllSubmissions(mock.all);
-      setMyChecking(mock.checking);
-      setMyChecked(mock.checked);
-      setIsMock(true);
+      setAllSubmissions(Array.isArray(allRes.data) ? allRes.data : []);
+      setMyChecking(Array.isArray(checkingRes.data) ? checkingRes.data : []);
+      setMyChecked(Array.isArray(checkedRes.data) ? checkedRes.data : []);
+    } catch (err: any) {
+      setError('Failed to load submissions.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClaim = async (submissionId: string) => {
+  const handleClaim = useCallback(async (submissionId: string) => {
     if (isMock) {
       const found = allSubmissions.find((s) => s.id === submissionId);
       if (!found) return;
       setAllSubmissions((prev) => prev.filter((s) => s.id !== submissionId));
-      setMyChecking((prev) => [
-        { ...found, status: 'claimed' },
-        ...prev,
-      ]);
-      alert('Demo mode: submission claimed.');
+      setMyChecking((prev) => [{ ...found, status: 'claimed' }, ...prev]);
+      toast.success('Demo: submission claimed.');
       return;
     }
     try {
       await api.post('/teacher-checking/claim/', { submission_id: submissionId });
-      alert('Submission claimed successfully!');
+      toast.success('Submission claimed!');
       fetchSubmissions();
-    } catch (error: any) {
-      alert(error.response?.data?.detail || 'Failed to claim submission');
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to claim submission');
     }
-  };
+  }, [isMock, allSubmissions, toast]);
 
-  const handleGrade = async (submissionId: string) => {
+  const handleGrade = useCallback(async (score: number, feedback: string) => {
+    if (!gradeTarget) return;
+
     if (isMock) {
-      const found = myChecking.find((s) => s.id === submissionId);
-      if (!found) return;
       const scored = {
-        ...found,
+        ...gradeTarget,
         status: 'checked',
-        score: 7.5,
+        score,
         checked_at: new Date().toISOString(),
       };
-      setMyChecking((prev) => prev.filter((s) => s.id !== submissionId));
+      setMyChecking((prev) => prev.filter((s) => s.id !== gradeTarget.id));
       setMyChecked((prev) => [scored, ...prev]);
-      alert('Demo mode: submission graded.');
+      setGradeTarget(null);
+      toast.success('Demo: submission graded.');
       return;
     }
-    const score = prompt('Enter score (0-9):');
-    const feedback = prompt('Enter feedback:');
 
-    if (!score || !feedback) return;
-
+    setGrading(true);
     try {
       await api.post('/teacher-checking/grade/', {
-        submission_id: submissionId,
-        score: parseFloat(score),
+        submission_id: gradeTarget.id,
+        score,
         feedback,
       });
-      alert('Submission graded successfully!');
+      toast.success('Submission graded!');
+      setGradeTarget(null);
       fetchSubmissions();
-    } catch (error: any) {
-      alert(error.response?.data?.detail || 'Failed to grade submission');
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to grade submission');
+    } finally {
+      setGrading(false);
     }
-  };
+  }, [gradeTarget, isMock, toast]);
 
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center">Loading...</div>
-      </div>
-    );
-  }
-
-  const getCurrentList = () => {
+  const getCurrentList = (): WritingSubmission[] => {
     switch (activeTab) {
       case 'all':
         return allSubmissions;
@@ -161,99 +136,132 @@ export default function TeacherCheckingPage() {
     }
   };
 
+  if (authLoading || loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="h-8 bg-gray-200 rounded w-56 mb-6 animate-pulse" />
+        <SkeletonTable rows={4} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <span className="text-5xl mb-4 block">⚠️</span>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <button onClick={() => window.location.reload()} className="btn-primary">
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const tabs: { key: Tab; label: string; count: number }[] = [
+    { key: 'all', label: 'All Submissions', count: allSubmissions.length },
+    { key: 'checking', label: 'In Progress', count: myChecking.length },
+    { key: 'checked', label: 'Checked', count: myChecked.length },
+  ];
+
+  const currentList = getCurrentList();
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 animate-fade-in">
       {isMock && (
         <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-yellow-100 text-yellow-800 px-4 py-1 text-sm font-semibold">
-          Demo data
+          ⚡ Demo data
         </div>
       )}
-      <h1 className="text-3xl font-bold text-[var(--primary)] mb-6">
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">
         Writing Submissions
       </h1>
 
-      <div className="flex gap-4 mb-6">
-        <button
-          onClick={() => setActiveTab('all')}
-          className={`px-6 py-2 rounded font-semibold ${
-            activeTab === 'all'
-              ? 'bg-[var(--primary)] text-white'
-              : 'bg-gray-200 text-gray-700'
-          }`}
-        >
-          All Submissions ({allSubmissions.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('checking')}
-          className={`px-6 py-2 rounded font-semibold ${
-            activeTab === 'checking'
-              ? 'bg-[var(--primary)] text-white'
-              : 'bg-gray-200 text-gray-700'
-          }`}
-        >
-          In Progress ({myChecking.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('checked')}
-          className={`px-6 py-2 rounded font-semibold ${
-            activeTab === 'checked'
-              ? 'bg-[var(--primary)] text-white'
-              : 'bg-gray-200 text-gray-700'
-          }`}
-        >
-          Checked ({myChecked.length})
-        </button>
-      </div>
-
-      <div className="space-y-4">
-        {getCurrentList().map((submission) => (
-          <div key={submission.id} className="card">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-lg font-bold text-[var(--primary)]">
-                  {submission.test_title} - {submission.task}
-                </h3>
-                <p className="text-gray-600 mt-1">
-                  Student: {submission.student_fullname}
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Submitted: {new Date(submission.submitted_at).toLocaleString()}
-                </p>
-                {submission.score && (
-                  <p className="text-sm font-semibold text-green-600 mt-1">
-                    Score: {submission.score}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                {submission.status === 'pending' && (
-                  <button
-                    onClick={() => handleClaim(submission.id)}
-                    className="btn-primary"
-                  >
-                    Claim
-                  </button>
-                )}
-                {submission.status === 'claimed' && (
-                  <button
-                    onClick={() => handleGrade(submission.id)}
-                    className="btn-primary"
-                  >
-                    Grade
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+      {/* Tab bar */}
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`tab-btn whitespace-nowrap ${activeTab === tab.key ? 'tab-btn-active' : 'tab-btn-inactive'
+              }`}
+          >
+            {tab.label}
+            <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${activeTab === tab.key ? 'bg-white/20' : 'bg-gray-300/50'
+              }`}>
+              {tab.count}
+            </span>
+          </button>
         ))}
       </div>
 
-      {getCurrentList().length === 0 && (
-        <div className="text-center text-gray-500 mt-8">
-          No submissions in this category.
+      {currentList.length === 0 ? (
+        <EmptyState
+          icon="📋"
+          title="No submissions"
+          description="No submissions in this category yet."
+        />
+      ) : (
+        <div className="space-y-3">
+          {currentList.map((submission) => (
+            <div key={submission.id} className="card py-5">
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-gray-900">
+                    {submission.test_title}{' '}
+                    <span className="badge badge-neutral text-xs ml-2">
+                      {submission.task.replace('_', ' ').toUpperCase()}
+                    </span>
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Student: {submission.student_fullname}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Submitted {new Date(submission.submitted_at).toLocaleString()}
+                  </p>
+                  {submission.score !== undefined && submission.score !== null && (
+                    <p className="text-sm font-semibold text-emerald-600 mt-1">
+                      Score: {submission.score}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-2 shrink-0">
+                  {submission.status === 'pending' && (
+                    <button
+                      onClick={() => handleClaim(submission.id)}
+                      className="btn-primary text-sm py-2 px-4"
+                    >
+                      Claim
+                    </button>
+                  )}
+                  {submission.status === 'claimed' && (
+                    <button
+                      onClick={() => setGradeTarget(submission)}
+                      className="btn-primary text-sm py-2 px-4"
+                    >
+                      Grade
+                    </button>
+                  )}
+                  {submission.status === 'checked' && (
+                    <span className="badge badge-success">Graded</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
+
+      {/* Grade modal */}
+      <GradeModal
+        open={!!gradeTarget}
+        studentName={gradeTarget?.student_fullname ?? ''}
+        testTitle={gradeTarget?.test_title ?? ''}
+        task={gradeTarget?.task ?? ''}
+        loading={grading}
+        onSubmit={handleGrade}
+        onCancel={() => setGradeTarget(null)}
+      />
     </div>
   );
 }

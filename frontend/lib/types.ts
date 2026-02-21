@@ -142,9 +142,17 @@ export interface TestDetail {
 
 export interface SpeakingRequest {
   id: string;
-  status: string;
-  requested_at: string;
-  scheduled_at?: string;
+  full_name: string;
+  telegram_username: string;
+  phone_number: string;
+  payment_date: string;
+  checklist: Record<string, boolean>;
+  status: 'pending' | 'connected' | 'completed' | 'cancelled';
+  fee_amount: string;
+  currency: string;
+  note: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface StudentDashboard {

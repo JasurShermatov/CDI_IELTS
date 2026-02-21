@@ -1,12 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth';
+import { useToast } from '@/components/Toast';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading, login } = useAuth();
+  const toast = useToast();
   const [formData, setFormData] = useState({
     fullname: '',
     phone_number: '',
@@ -18,6 +22,13 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      router.replace('/dashboard');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
   const handleStartRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -27,6 +38,7 @@ export default function RegisterPage() {
       const response = await api.post('/accounts/register/start/', formData);
       setUserId(response.data.user_id);
       setOtpSent(true);
+      toast.info('Verification code sent! Check your Telegram.');
     } catch (err: any) {
       const data = err.response?.data;
       if (data && typeof data === 'object' && !data.detail) {
@@ -51,9 +63,8 @@ export default function RegisterPage() {
         code: otp,
       });
 
-      localStorage.setItem('access_token', response.data.access);
-      localStorage.setItem('refresh_token', response.data.refresh);
-      localStorage.setItem('user_role', response.data.role);
+      login(response.data.access, response.data.refresh, response.data.role);
+      toast.success('Registration complete! Welcome to CDI IELTS.');
 
       if (response.data.role === 'teacher') {
         router.push('/teacher/dashboard');
@@ -67,16 +78,18 @@ export default function RegisterPage() {
     }
   };
 
+  if (authLoading) return null;
+
   return (
     <div className="container mx-auto px-4 py-16">
-      <div className="max-w-md mx-auto">
+      <div className="max-w-md mx-auto animate-fade-in">
         <div className="card">
           <h1 className="text-3xl font-bold text-[var(--primary)] mb-6 text-center">
             Register
           </h1>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm" role="alert">
               {error}
             </div>
           )}
@@ -84,41 +97,44 @@ export default function RegisterPage() {
           {!otpSent ? (
             <form onSubmit={handleStartRegistration}>
               <div className="mb-4">
-                <label className="block text-gray-700 font-semibold mb-2">
+                <label htmlFor="fullname" className="block text-gray-700 font-semibold mb-2">
                   Full Name
                 </label>
                 <input
+                  id="fullname"
                   type="text"
                   value={formData.fullname}
                   onChange={(e) =>
                     setFormData({ ...formData, fullname: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-[var(--primary)]"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg"
                   required
                 />
               </div>
 
               <div className="mb-4">
-                <label className="block text-gray-700 font-semibold mb-2">
+                <label htmlFor="phone" className="block text-gray-700 font-semibold mb-2">
                   Phone Number
                 </label>
                 <input
+                  id="phone"
                   type="tel"
                   value={formData.phone_number}
                   onChange={(e) =>
                     setFormData({ ...formData, phone_number: e.target.value })
                   }
                   placeholder="+998901234567"
-                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-[var(--primary)]"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg"
                   required
                 />
               </div>
 
-              <div className="mb-4">
-                <label className="block text-gray-700 font-semibold mb-2">
+              <div className="mb-6">
+                <label htmlFor="role" className="block text-gray-700 font-semibold mb-2">
                   Role
                 </label>
                 <select
+                  id="role"
                   value={formData.role}
                   onChange={(e) =>
                     setFormData({
@@ -126,7 +142,7 @@ export default function RegisterPage() {
                       role: e.target.value as 'student' | 'teacher',
                     })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-[var(--primary)]"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg"
                 >
                   <option value="student">Student</option>
                   <option value="teacher">Teacher</option>
@@ -143,23 +159,31 @@ export default function RegisterPage() {
             </form>
           ) : (
             <form onSubmit={handleVerifyRegistration}>
-              <div className="mb-4">
-                <label className="block text-gray-700 font-semibold mb-2">
+              <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg mb-4 text-sm">
+                Code sent to your Telegram. Please enter it below.
+              </div>
+
+              <div className="mb-6">
+                <label htmlFor="otp" className="block text-gray-700 font-semibold mb-2">
                   Enter OTP
                 </label>
                 <input
+                  id="otp"
                   type="text"
                   value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="123456"
-                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-[var(--primary)]"
+                  maxLength={6}
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl tracking-[0.5em] font-mono"
                   required
                 />
               </div>
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || otp.length < 6}
                 className="btn-primary w-full"
               >
                 {loading ? 'Verifying...' : 'Complete Registration'}
@@ -170,8 +194,9 @@ export default function RegisterPage() {
                 onClick={() => {
                   setOtpSent(false);
                   setOtp('');
+                  setError('');
                 }}
-                className="btn-secondary w-full mt-2"
+                className="btn-secondary w-full mt-3"
               >
                 Change Information
               </button>
@@ -179,7 +204,7 @@ export default function RegisterPage() {
           )}
 
           <div className="mt-6 text-center">
-            <Link href="/login" className="text-[var(--primary)] hover:underline">
+            <Link href="/login" className="text-[var(--primary)] hover:underline font-medium text-sm">
               Already have an account? Login
             </Link>
           </div>
