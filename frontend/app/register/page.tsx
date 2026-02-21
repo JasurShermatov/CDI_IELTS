@@ -10,8 +10,9 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState({
     fullname: '',
     phone_number: '',
-    telegram_username: '',
+    role: 'student' as 'student' | 'teacher',
   });
+  const [userId, setUserId] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -23,10 +24,17 @@ export default function RegisterPage() {
     setError('');
 
     try {
-      await api.post('/accounts/register/start/', formData);
+      const response = await api.post('/accounts/register/start/', formData);
+      setUserId(response.data.user_id);
       setOtpSent(true);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to start registration');
+      const data = err.response?.data;
+      if (data && typeof data === 'object' && !data.detail) {
+        const messages = Object.values(data).flat().join(' ');
+        setError(messages || 'Failed to start registration');
+      } else {
+        setError(data?.detail || 'Failed to start registration');
+      }
     } finally {
       setLoading(false);
     }
@@ -39,15 +47,19 @@ export default function RegisterPage() {
 
     try {
       const response = await api.post('/accounts/register/verify/', {
-        ...formData,
-        otp,
+        user_id: userId,
+        code: otp,
       });
 
       localStorage.setItem('access_token', response.data.access);
       localStorage.setItem('refresh_token', response.data.refresh);
       localStorage.setItem('user_role', response.data.role);
 
-      router.push('/dashboard');
+      if (response.data.role === 'teacher') {
+        router.push('/teacher/dashboard');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to verify registration');
     } finally {
@@ -104,20 +116,21 @@ export default function RegisterPage() {
 
               <div className="mb-4">
                 <label className="block text-gray-700 font-semibold mb-2">
-                  Telegram Username (Optional)
+                  Role
                 </label>
-                <input
-                  type="text"
-                  value={formData.telegram_username}
+                <select
+                  value={formData.role}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      telegram_username: e.target.value,
+                      role: e.target.value as 'student' | 'teacher',
                     })
                   }
-                  placeholder="@username"
                   className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-[var(--primary)]"
-                />
+                >
+                  <option value="student">Student</option>
+                  <option value="teacher">Teacher</option>
+                </select>
               </div>
 
               <button

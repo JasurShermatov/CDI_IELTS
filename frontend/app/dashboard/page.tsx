@@ -20,7 +20,7 @@ export default function DashboardPage() {
 
     const fetchDashboard = async () => {
       try {
-        const response = await api.get('/profiles/student/me/');
+        const response = await api.get('/profiles/student/dashboard/');
         setDashboard(response.data);
       } catch (error) {
         console.error('Failed to fetch dashboard:', error);

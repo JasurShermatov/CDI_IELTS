@@ -39,7 +39,7 @@ export default function SpeakingPage() {
       alert('Speaking request created successfully!');
       fetchRequests();
     } catch (error: any) {
-      alert(error.response?.data?.detail || 'Failed to create request');
+      alert(error.response?.data?.error || error.response?.data?.detail || 'Failed to create request');
     } finally {
       setCreating(false);
     }

@@ -7,37 +7,17 @@ import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [otp, setOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSendOtp = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      await api.post('/accounts/otp/ingest/', { phone_number: phoneNumber });
-      setOtpSent(true);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to send OTP');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      const response = await api.post('/accounts/login/verify/', {
-        phone_number: phoneNumber,
-        otp,
-      });
+      const response = await api.post('/accounts/login/verify/', { code });
 
       localStorage.setItem('access_token', response.data.access);
       localStorage.setItem('refresh_token', response.data.refresh);
@@ -49,7 +29,16 @@ export default function LoginPage() {
         router.push('/dashboard');
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to verify OTP');
+      const data = err.response?.data;
+      if (data && typeof data === 'object') {
+        const msg =
+          data.detail ||
+          data.non_field_errors?.[0] ||
+          Object.values(data).flat().join(' ');
+        setError(msg || 'Invalid or expired code');
+      } else {
+        setError('Invalid or expired code');
+      }
     } finally {
       setLoading(false);
     }
@@ -63,76 +52,53 @@ export default function LoginPage() {
             Login
           </h1>
 
+          <div className="bg-blue-50 border border-blue-200 text-blue-800 px-5 py-4 rounded-lg mb-6">
+            <h3 className="font-bold text-base mb-2">📱 How to login:</h3>
+            <ol className="list-decimal list-inside space-y-1 text-sm">
+              <li>Open our <strong>Telegram bot</strong></li>
+              <li>Send <code className="bg-blue-100 px-1.5 py-0.5 rounded text-xs font-mono">/login</code> command</li>
+              <li>You will receive a <strong>6-digit code</strong></li>
+              <li>Enter the code below</li>
+            </ol>
+          </div>
+
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
               {error}
             </div>
           )}
 
-          {!otpSent ? (
-            <form onSubmit={handleSendOtp}>
-              <div className="mb-4">
-                <label className="block text-gray-700 font-semibold mb-2">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="+998901234567"
-                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-[var(--primary)]"
-                  required
-                />
-              </div>
+          <form onSubmit={handleLogin}>
+            <div className="mb-6">
+              <label className="block text-gray-700 font-semibold mb-2">
+                Verification Code
+              </label>
+              <input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                maxLength={6}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl tracking-[0.5em] font-mono focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-light)]"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                Enter the 6-digit code from Telegram
+              </p>
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary w-full"
-              >
-                {loading ? 'Sending...' : 'Send OTP'}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleVerifyOtp}>
-              <div className="mb-4">
-                <label className="block text-gray-700 font-semibold mb-2">
-                  Enter OTP
-                </label>
-                <input
-                  type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  placeholder="123456"
-                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-[var(--primary)]"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary w-full"
-              >
-                {loading ? 'Verifying...' : 'Verify OTP'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setOtpSent(false);
-                  setOtp('');
-                }}
-                className="btn-secondary w-full mt-2"
-              >
-                Change Phone Number
-              </button>
-            </form>
-          )}
+            <button
+              type="submit"
+              disabled={loading || code.length < 6}
+              className="btn-primary w-full text-lg py-3 disabled:opacity-50"
+            >
+              {loading ? 'Verifying...' : 'Login'}
+            </button>
+          </form>
 
           <div className="mt-6 text-center">
-            <Link href="/register" className="text-[var(--primary)] hover:underline">
-              Don't have an account? Register
+            <Link href="/register" className="text-[var(--primary)] hover:underline font-medium">
+              Don&apos;t have an account? Register
             </Link>
           </div>
         </div>

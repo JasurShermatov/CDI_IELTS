@@ -32,16 +32,36 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
 }
 
 .btn-primary {
-  @apply bg-[var(--primary)] hover:bg-[var(--primary-dark)] text-white font-semibold py-2 px-4 rounded transition-colors;
+  @apply bg-[var(--primary)] hover:bg-[var(--primary-dark)] text-white font-semibold py-3 px-6 rounded-lg transition-colors text-center inline-block;
 }
 
 .btn-secondary {
-  @apply bg-white hover:bg-gray-50 text-[var(--primary)] border-2 border-[var(--primary)] font-semibold py-2 px-4 rounded transition-colors;
+  @apply bg-white hover:bg-gray-50 text-[var(--primary)] border-2 border-[var(--primary)] font-semibold py-3 px-6 rounded-lg transition-colors text-center inline-block;
 }
 
 .card {
-  @apply bg-[var(--card)] border border-[var(--border)] rounded-lg shadow-sm p-6;
+  @apply bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-sm p-6 md:p-8;
+}
+
+/* Smooth transitions */
+a, button {
+  transition: all 0.2s ease;
+}
+
+/* Better focus styles */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* Disabled state */
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
