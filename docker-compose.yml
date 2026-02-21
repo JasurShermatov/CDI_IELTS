@@ -51,6 +51,22 @@ services:
     networks:
       - cdi_network
 
+  frontend:
+    container_name: cdi_ielts-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://web:8700/api
+    depends_on:
+      web:
+        condition: service_healthy
+    networks:
+      - cdi_network
+
 volumes:
   postgres_data:
 

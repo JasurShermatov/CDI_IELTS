@@ -1,0 +1,94 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
+import { Test } from '@/lib/types';
+
+export default function TestsPage() {
+  const router = useRouter();
+  const [tests, setTests] = useState<Test[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    const fetchTests = async () => {
+      try {
+        const response = await api.get('/user-tests/all-tests/');
+        setTests(response.data);
+      } catch (error) {
+        console.error('Failed to fetch tests:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTests();
+  }, [router]);
+
+  const handlePurchase = async (testId: string) => {
+    try {
+      await api.post(`/user-tests/purchase/${testId}/`);
+      alert('Test purchased successfully!');
+      router.push('/my-tests');
+    } catch (error: any) {
+      alert(error.response?.data?.detail || 'Failed to purchase test');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-16">
+        <div className="text-center">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold text-[var(--primary)] mb-6">
+        Available Tests
+      </h1>
+
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {tests.map((test) => (
+          <div key={test.id} className="card">
+            <h3 className="text-xl font-bold text-[var(--primary)] mb-2">
+              {test.title}
+            </h3>
+            <p className="text-2xl font-bold text-gray-700 mb-4">
+              {parseFloat(test.price).toLocaleString()} UZS
+            </p>
+            <p className="text-sm text-gray-500 mb-4">
+              Created: {new Date(test.created_at).toLocaleDateString()}
+            </p>
+
+            {test.purchased ? (
+              <button className="btn-secondary w-full" disabled>
+                Already Purchased
+              </button>
+            ) : (
+              <button
+                onClick={() => handlePurchase(test.id)}
+                className="btn-primary w-full"
+              >
+                Purchase Test
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {tests.length === 0 && (
+        <div className="text-center text-gray-500 mt-8">
+          No tests available at the moment.
+        </div>
+      )}
+    </div>
+  );
+}
