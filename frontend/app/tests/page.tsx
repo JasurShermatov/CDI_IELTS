@@ -4,11 +4,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { Test } from '@/lib/types';
+import { getMockTests } from '@/lib/mockData';
+import { isMockEnabled } from '@/lib/mockMode';
 
 export default function TestsPage() {
   const router = useRouter();
   const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isMock, setIsMock] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
@@ -17,12 +20,26 @@ export default function TestsPage() {
       return;
     }
 
+    if (isMockEnabled()) {
+      setTests(getMockTests());
+      setIsMock(true);
+      setLoading(false);
+      return;
+    }
+
     const fetchTests = async () => {
       try {
         const response = await api.get('/user-tests/all-tests/');
+        if (Array.isArray(response.data) && response.data.length === 0) {
+          setTests(getMockTests());
+          setIsMock(true);
+          return;
+        }
         setTests(response.data);
       } catch (error) {
         console.error('Failed to fetch tests:', error);
+        setTests(getMockTests());
+        setIsMock(true);
       } finally {
         setLoading(false);
       }
@@ -32,6 +49,11 @@ export default function TestsPage() {
   }, [router]);
 
   const handlePurchase = async (testId: string) => {
+    if (isMock) {
+      alert('Demo mode: purchase simulated.');
+      router.push('/my-tests');
+      return;
+    }
     try {
       await api.post(`/user-tests/purchase/${testId}/`);
       alert('Test purchased successfully!');
@@ -51,6 +73,11 @@ export default function TestsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {isMock && (
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-yellow-100 text-yellow-800 px-4 py-1 text-sm font-semibold">
+          Demo data
+        </div>
+      )}
       <h1 className="text-3xl font-bold text-[var(--primary)] mb-6">
         Available Tests
       </h1>

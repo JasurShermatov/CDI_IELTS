@@ -4,17 +4,27 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { SpeakingRequest } from '@/lib/types';
+import { getMockSpeakingRequests } from '@/lib/mockData';
+import { isMockEnabled } from '@/lib/mockMode';
 
 export default function SpeakingPage() {
   const router = useRouter();
   const [requests, setRequests] = useState<SpeakingRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [isMock, setIsMock] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (!token) {
       router.push('/login');
+      return;
+    }
+
+    if (isMockEnabled()) {
+      setRequests(getMockSpeakingRequests());
+      setIsMock(true);
+      setLoading(false);
       return;
     }
 
@@ -24,15 +34,38 @@ export default function SpeakingPage() {
   const fetchRequests = async () => {
     try {
       const response = await api.get('/speaking/my/');
+      if (Array.isArray(response.data) && response.data.length === 0) {
+        setRequests(getMockSpeakingRequests());
+        setIsMock(true);
+        return;
+      }
       setRequests(response.data);
     } catch (error) {
       console.error('Failed to fetch speaking requests:', error);
+      setRequests(getMockSpeakingRequests());
+      setIsMock(true);
     } finally {
       setLoading(false);
     }
   };
 
   const handleCreateRequest = async () => {
+    if (isMock) {
+      setCreating(true);
+      const now = new Date().toISOString();
+      setRequests((prev) => [
+        {
+          id: crypto.randomUUID(),
+          status: 'created',
+          requested_at: now,
+          scheduled_at: null,
+        },
+        ...prev,
+      ]);
+      setCreating(false);
+      alert('Demo mode: speaking request created.');
+      return;
+    }
     setCreating(true);
     try {
       await api.post('/speaking/request/');
@@ -55,6 +88,11 @@ export default function SpeakingPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {isMock && (
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-yellow-100 text-yellow-800 px-4 py-1 text-sm font-semibold">
+          Demo data
+        </div>
+      )}
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-[var(--primary)]">

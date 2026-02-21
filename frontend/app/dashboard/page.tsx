@@ -4,17 +4,27 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { StudentDashboard } from '@/lib/types';
+import { getMockStudentDashboard } from '@/lib/mockData';
+import { isMockEnabled } from '@/lib/mockMode';
 import Link from 'next/link';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [dashboard, setDashboard] = useState<StudentDashboard | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMock, setIsMock] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (!token) {
       router.push('/login');
+      return;
+    }
+
+    if (isMockEnabled()) {
+      setDashboard(getMockStudentDashboard());
+      setIsMock(true);
+      setLoading(false);
       return;
     }
 
@@ -24,6 +34,8 @@ export default function DashboardPage() {
         setDashboard(response.data);
       } catch (error) {
         console.error('Failed to fetch dashboard:', error);
+        setDashboard(getMockStudentDashboard());
+        setIsMock(true);
       } finally {
         setLoading(false);
       }
@@ -46,6 +58,11 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {isMock && (
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-yellow-100 text-yellow-800 px-4 py-1 text-sm font-semibold">
+          Demo data
+        </div>
+      )}
       <h1 className="text-3xl font-bold text-[var(--primary)] mb-6">
         Dashboard
       </h1>

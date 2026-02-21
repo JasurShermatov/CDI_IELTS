@@ -76,3 +76,12 @@ IELTS-branded colors:
 - Light Red: `#fee2e2`
 - White backgrounds with red accents
 
+## Mock Data Mode
+
+For UI demos without backend data, enable mock mode:
+
+```env
+NEXT_PUBLIC_USE_MOCKS=true
+```
+
+When enabled, pages will show realistic demo data and simulated actions.

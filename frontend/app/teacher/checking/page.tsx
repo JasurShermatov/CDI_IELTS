@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
+import { getMockTeacherSubmissions } from '@/lib/mockData';
+import { isMockEnabled } from '@/lib/mockMode';
 
 interface WritingSubmission {
   id: string;
@@ -23,6 +25,7 @@ export default function TeacherCheckingPage() {
   const [myChecked, setMyChecked] = useState<WritingSubmission[]>([]);
   const [activeTab, setActiveTab] = useState<'all' | 'checking' | 'checked'>('all');
   const [loading, setLoading] = useState(true);
+  const [isMock, setIsMock] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
@@ -30,6 +33,16 @@ export default function TeacherCheckingPage() {
 
     if (!token || role !== 'teacher') {
       router.push('/login');
+      return;
+    }
+
+    if (isMockEnabled()) {
+      const mock = getMockTeacherSubmissions();
+      setAllSubmissions(mock.all);
+      setMyChecking(mock.checking);
+      setMyChecked(mock.checked);
+      setIsMock(true);
+      setLoading(false);
       return;
     }
 
@@ -44,17 +57,49 @@ export default function TeacherCheckingPage() {
         api.get('/teacher-checking/checked/'),
       ]);
 
+      if (
+        Array.isArray(allRes.data) &&
+        Array.isArray(checkingRes.data) &&
+        Array.isArray(checkedRes.data) &&
+        allRes.data.length === 0 &&
+        checkingRes.data.length === 0 &&
+        checkedRes.data.length === 0
+      ) {
+        const mock = getMockTeacherSubmissions();
+        setAllSubmissions(mock.all);
+        setMyChecking(mock.checking);
+        setMyChecked(mock.checked);
+        setIsMock(true);
+        return;
+      }
+
       setAllSubmissions(allRes.data);
       setMyChecking(checkingRes.data);
       setMyChecked(checkedRes.data);
     } catch (error) {
       console.error('Failed to fetch submissions:', error);
+      const mock = getMockTeacherSubmissions();
+      setAllSubmissions(mock.all);
+      setMyChecking(mock.checking);
+      setMyChecked(mock.checked);
+      setIsMock(true);
     } finally {
       setLoading(false);
     }
   };
 
   const handleClaim = async (submissionId: string) => {
+    if (isMock) {
+      const found = allSubmissions.find((s) => s.id === submissionId);
+      if (!found) return;
+      setAllSubmissions((prev) => prev.filter((s) => s.id !== submissionId));
+      setMyChecking((prev) => [
+        { ...found, status: 'claimed' },
+        ...prev,
+      ]);
+      alert('Demo mode: submission claimed.');
+      return;
+    }
     try {
       await api.post('/teacher-checking/claim/', { submission_id: submissionId });
       alert('Submission claimed successfully!');
@@ -65,6 +110,20 @@ export default function TeacherCheckingPage() {
   };
 
   const handleGrade = async (submissionId: string) => {
+    if (isMock) {
+      const found = myChecking.find((s) => s.id === submissionId);
+      if (!found) return;
+      const scored = {
+        ...found,
+        status: 'checked',
+        score: 7.5,
+        checked_at: new Date().toISOString(),
+      };
+      setMyChecking((prev) => prev.filter((s) => s.id !== submissionId));
+      setMyChecked((prev) => [scored, ...prev]);
+      alert('Demo mode: submission graded.');
+      return;
+    }
     const score = prompt('Enter score (0-9):');
     const feedback = prompt('Enter feedback:');
 
@@ -104,6 +163,11 @@ export default function TeacherCheckingPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {isMock && (
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-yellow-100 text-yellow-800 px-4 py-1 text-sm font-semibold">
+          Demo data
+        </div>
+      )}
       <h1 className="text-3xl font-bold text-[var(--primary)] mb-6">
         Writing Submissions
       </h1>

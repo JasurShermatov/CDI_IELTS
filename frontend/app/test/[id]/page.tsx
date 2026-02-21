@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import api from '@/lib/api';
 import { TestDetail, QuestionSet } from '@/lib/types';
+import { getMockTestDetail } from '@/lib/mockData';
+import { isMockEnabled } from '@/lib/mockMode';
 
 export default function TestPage() {
   const router = useRouter();
@@ -13,11 +15,19 @@ export default function TestPage() {
   const [test, setTest] = useState<TestDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<'listening' | 'reading' | 'writing'>('listening');
+  const [isMock, setIsMock] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (!token) {
       router.push('/login');
+      return;
+    }
+
+    if (isMockEnabled()) {
+      setTest(getMockTestDetail(testId));
+      setIsMock(true);
+      setLoading(false);
       return;
     }
 
@@ -27,8 +37,8 @@ export default function TestPage() {
         setTest(response.data);
       } catch (error) {
         console.error('Failed to fetch test:', error);
-        alert('Failed to load test');
-        router.push('/my-tests');
+        setTest(getMockTestDetail(testId));
+        setIsMock(true);
       } finally {
         setLoading(false);
       }
@@ -51,6 +61,11 @@ export default function TestPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {isMock && (
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-yellow-100 text-yellow-800 px-4 py-1 text-sm font-semibold">
+          Demo data
+        </div>
+      )}
       <h1 className="text-3xl font-bold text-[var(--primary)] mb-6">
         {test.title}
       </h1>
